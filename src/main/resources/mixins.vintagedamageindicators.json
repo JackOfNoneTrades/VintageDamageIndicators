@@ -1,0 +1,10 @@
+{
+  "required": true,
+  "minVersion": "0.8.7-GTNH",
+  "package": "org.fentanylsolutions.vintagedamageindicators.mixins.mid",
+  "refmap": "mixins.vintagedamageindicators.refmap.json",
+  "target": "@env(DEFAULT)",
+  "compatibilityLevel": "JAVA_8",
+  "client" : [
+  ]
+}

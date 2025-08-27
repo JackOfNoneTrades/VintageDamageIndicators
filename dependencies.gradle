@@ -36,7 +36,6 @@
 dependencies {
     //runtimeOnlyNonPublishable("com.github.GTNewHorizons:NotEnoughItems:2.7.69-GTNH:dev")
 
-    // https://mvnrepository.com/artifact/org.joml/joml
     shadowImplementation("org.joml:joml:1.10.8")
     /* Fixes the mod menu being broken ingame, allows for quick config testing */
     runtimeOnlyNonPublishable(rfg.deobf("curse.maven:endercore-231868:4671288"))

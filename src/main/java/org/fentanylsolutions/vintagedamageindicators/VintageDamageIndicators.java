@@ -11,6 +11,7 @@ import cpw.mods.fml.common.event.FMLInitializationEvent;
 import cpw.mods.fml.common.event.FMLPostInitializationEvent;
 import cpw.mods.fml.common.event.FMLPreInitializationEvent;
 import cpw.mods.fml.common.event.FMLServerStartingEvent;
+import org.fentanylsolutions.vintagedamageindicators.varinstances.VarInstanceCommon;
 import org.joml.Quaternionf;
 
 import java.io.File;
@@ -29,6 +30,8 @@ public class VintageDamageIndicators {
 
     @SidedProxy(clientSide = MODGROUP + "." + MODID + ".ClientProxy", serverSide = MODGROUP + "." + MODID + ".CommonProxy")
     public static CommonProxy proxy;
+
+    public static VarInstanceCommon varInstanceCommon;
 
     private static final ResourceLocation DAMAGE_INDICATOR_TEXTURE = new ResourceLocation(MODID, "textures/gui/damage_indicator.png");
     private static final ResourceLocation DAMAGE_INDICATOR_BACKGROUND_TEXTURE = new ResourceLocation(MODID, "textures/gui/damage_indicator_background.png");
