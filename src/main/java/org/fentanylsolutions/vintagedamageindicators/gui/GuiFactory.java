@@ -50,20 +50,11 @@ public class GuiFactory implements IModGuiFactory {
             Config.getRawConfig()
                 .getCategory(Config.Categories.debug));
 
-        /*public ConfigGui(GuiScreen parentScreen) {
-            super(
-                parentScreen,
-                ImmutableList.of(ceDamageParticles, ceHudIndicator, ceTypeOverrides, ceDebug),
-                VintageDamageIndicators.MODID,
-                VintageDamageIndicators.MODID,
-                false,
-                false,
-                I18n.format("vintagedamageindicators.configgui.title"));
-        }*/
         public ConfigGui(GuiScreen parentScreen) {
             super(
                 parentScreen,
                 ImmutableList.of(
+                    // Construct directly here to prevent stale references
                     new ConfigElement(Config.getRawConfig().getCategory(Config.Categories.damageParticles)),
                     new ConfigElement(Config.getRawConfig().getCategory(Config.Categories.hudIndicator)),
                     new ConfigElement(Config.getRawConfig().getCategory(Config.Categories.typeOverrides)),

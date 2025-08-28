@@ -26,6 +26,8 @@ public class EarlyMixinLoader implements IEarlyMixinLoader, IFMLLoadingPlugin {
             .isClient()) {
             mixins.add("minecraft.MixinEntityPlayerSP");
             mixins.add("minecraft.MixinNetHandlerPlayClient");
+        } else {
+
         }
         return mixins;
     }

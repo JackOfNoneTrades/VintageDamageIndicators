@@ -20,8 +20,7 @@ public class CommonProxy {
 
     // load "Do your mod setup. Build whatever data structures you care about. Register recipes." (Remove if not needed)
     public void init(FMLInitializationEvent event) {
-        EventHandler eventHandler = new EventHandler();
-        MinecraftForge.EVENT_BUS.register(eventHandler);
+
     }
 
     // postInit "Handle interaction with other mods, complete your setup based on this." (Remove if not needed)
