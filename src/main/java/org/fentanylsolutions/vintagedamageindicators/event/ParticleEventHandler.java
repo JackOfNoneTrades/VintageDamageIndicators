@@ -1,4 +1,4 @@
-package org.fentanylsolutions.vintagedamageindicators;
+package org.fentanylsolutions.vintagedamageindicators.event;
 
 import cpw.mods.fml.common.FMLCommonHandler;
 import cpw.mods.fml.common.eventhandler.SubscribeEvent;
@@ -9,6 +9,7 @@ import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.potion.PotionEffect;
 import net.minecraft.util.MathHelper;
 import net.minecraftforge.event.entity.living.LivingEvent;
+import org.fentanylsolutions.vintagedamageindicators.Config;
 import org.fentanylsolutions.vintagedamageindicators.rendering.DamageIndicatorParticle;
 
 import java.util.ArrayList;
@@ -17,7 +18,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-public class EventHandler {
+public class ParticleEventHandler {
     public static HashMap<Integer, Integer> healths = new HashMap<>();
     public static Map<Integer, Collection<PotionEffect>> potionEffects = new HashMap();
     public static List<Integer> enemies = new ArrayList();

@@ -5,7 +5,7 @@ import net.minecraft.network.play.server.S0BPacketAnimation;
 import net.minecraft.entity.Entity;
 import net.minecraft.client.Minecraft;
 import org.fentanylsolutions.vintagedamageindicators.Config;
-import org.fentanylsolutions.vintagedamageindicators.EventHandler;
+import org.fentanylsolutions.vintagedamageindicators.event.ParticleEventHandler;
 import org.fentanylsolutions.vintagedamageindicators.VintageDamageIndicators;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
@@ -31,7 +31,7 @@ public class MixinNetHandlerPlayClient {
             if (Config.criticalParticlesEnabled) {
                 Entity entity = Minecraft.getMinecraft().theWorld.getEntityByID(packetIn.func_148978_c());
                 VintageDamageIndicators.debug("Spawning crit FX for: " + entity);
-                EventHandler.doCritical(entity);
+                ParticleEventHandler.doCritical(entity);
             }
         }
     }

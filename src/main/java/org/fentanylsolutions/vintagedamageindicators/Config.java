@@ -44,30 +44,13 @@ public class Config {
     public static boolean hudIndicatorAlignTop = true;
     public static int hudIndicatorPositionX = 10;
     public static int  hudIndicatorPositionY = 10;
-    public static float hudEntitySize = 38;
     public static boolean hudNameTextOutline = false;
     public static boolean hudHealthTextOutline = false;
-    public static String[] oldRenderEntities = {};
-    public static String[] entityBlacklist = {};
+    public static boolean disableBossBar = false;
+    public static boolean hideOnDebug = false;
 
-    // type-overrides
-    public static String[] playerTypeOverrides = {};
-    public static String[] bossTypeOverrides = {};
-    public static String[] waterAnimalTypeOverrides = {};
-    public static String[] waterMonsterTypeOverrides = {};
-    public static String[] monsterTypeOverrides = {};
-    public static String[] undeadTypeOverrides = {};
-    public static String[] undeadAnimalTypeOverrides = {};
-    public static String[] arthropodTypeOverrides = {};
-    public static String[] illagerTypeOverrides = {};
-    public static String[] villagerTypeOverrides = {};
-    public static String[] golemTypeOverrides = {};
-    public static String[] ambientTypeOverrides = {};
-    public static String[] animalTypeOverrides = {};
-    public static String[] arthropodMonsterTypeOverrides = {};
-    public static String[] arthropodWaterMonsterTypeOverrides = {};
-    public static String[] arthropodWaterTypeOverrides = {};
-    // TODO: magic ambient/passive/monster, demon, dragon (are there even any in 1.7)?, miniboss?
+    // entity overrides
+    public static String[] entityOverrides = {};
 
     // debug
     public static boolean debugMode = false;
@@ -77,7 +60,7 @@ public class Config {
 
         public static final String damageParticles = "damage-particles";
         public static final String hudIndicator = "hud-indicator";
-        public static final String typeOverrides = "type-overrides";
+        public static final String entityOverrides = "type-overrides";
         public static final String debug = "debug";
     }
 
@@ -122,10 +105,13 @@ public class Config {
              hudIndicatorAlignTop = config.getBoolean("hudIndicatorAlignTop", Categories.hudIndicator, hudIndicatorAlignTop, "True if the hud indicator appears on the top of the screen, false for bottom.");
              hudIndicatorPositionX = config.getInt("hudIndicatorPositionX", Categories.hudIndicator, hudIndicatorPositionX, Integer.MIN_VALUE, Integer.MAX_VALUE, "How many pixels from the left side of the screen the hud indicator is.");
              hudIndicatorPositionY = config.getInt("hudIndicatorPositionY", Categories.hudIndicator, hudIndicatorPositionY, Integer.MIN_VALUE, Integer.MAX_VALUE, "How many pixels from the top of the screen the hud indicator is.");
-             hudEntitySize = config.getFloat("hudEntitySize", Categories.hudIndicator, hudEntitySize, 0, 2000, "The size in pixels a usual entiud-ity should render as in the hud indicator.");
              hudNameTextOutline = config.getBoolean("hudNameTextOutline", Categories.hudIndicator, hudNameTextOutline, "Whether the name of the entity in the hud indicator should be outlined.");
              hudHealthTextOutline = config.getBoolean("hudHealthTextOutline", Categories.hudIndicator, hudHealthTextOutline, "Whether the health of the entity in the hud indicator should be outlined.");
-             oldRenderEntities = config.getStringList("oldRenderEntities", Categories.hudIndicator, oldRenderEntities, "List of all entity_types to just render as a model instead of with entity context. add to this if an entity is rendering strangely.");
+            disableBossBar = config.getBoolean("disableBossBar", Categories.hudIndicator, disableBossBar, "Whether to disable the boss bar.");
+            hideOnDebug = config.getBoolean("hideOnDebug", Categories.hudIndicator, hideOnDebug, "Whether to hide the HUD when the debug screen is enabled.");
+
+             // entity overrides
+            entityOverrides = config.getStringList("entityOverrides", Categories.entityOverrides, entityOverrides, "Entity-specific render overrides.");
 
             // Debug
             debugMode = config.getBoolean("debugMode", Categories.debug, debugMode, "Enable debug logging");

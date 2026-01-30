@@ -1,7 +1,10 @@
 package org.fentanylsolutions.vintagedamageindicators;
 
+import cpw.mods.fml.common.FMLCommonHandler;
 import cpw.mods.fml.common.event.FMLInitializationEvent;
 import net.minecraftforge.common.MinecraftForge;
+import org.fentanylsolutions.vintagedamageindicators.event.HudEventHandler;
+import org.fentanylsolutions.vintagedamageindicators.event.ParticleEventHandler;
 
 public class ClientProxy extends CommonProxy {
 
@@ -10,7 +13,11 @@ public class ClientProxy extends CommonProxy {
 
     @Override
     public void init(FMLInitializationEvent event) {
-        EventHandler eventHandler = new EventHandler();
-        MinecraftForge.EVENT_BUS.register(eventHandler);
+        ParticleEventHandler particleEventHandler = new ParticleEventHandler();
+        MinecraftForge.EVENT_BUS.register(particleEventHandler);
+
+        HudEventHandler hudEventHandler = new HudEventHandler();
+        MinecraftForge.EVENT_BUS.register(hudEventHandler);
+        FMLCommonHandler.instance().bus().register(hudEventHandler);
     }
 }

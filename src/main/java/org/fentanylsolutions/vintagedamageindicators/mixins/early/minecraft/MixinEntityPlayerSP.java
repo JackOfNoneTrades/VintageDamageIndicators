@@ -1,10 +1,9 @@
 package org.fentanylsolutions.vintagedamageindicators.mixins.early.minecraft;
 
-import net.minecraft.client.Minecraft;
 import net.minecraft.client.entity.EntityPlayerSP;
 import net.minecraft.entity.Entity;
 import org.fentanylsolutions.vintagedamageindicators.Config;
-import org.fentanylsolutions.vintagedamageindicators.EventHandler;
+import org.fentanylsolutions.vintagedamageindicators.event.ParticleEventHandler;
 import org.fentanylsolutions.vintagedamageindicators.VintageDamageIndicators;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
@@ -31,7 +30,7 @@ public class MixinEntityPlayerSP {
         }
         if (Config.criticalParticlesEnabled) {
             VintageDamageIndicators.debug("Spawning crit FX for: " + target);
-            EventHandler.doCritical(target);
+            ParticleEventHandler.doCritical(target);
         }
     }
 }

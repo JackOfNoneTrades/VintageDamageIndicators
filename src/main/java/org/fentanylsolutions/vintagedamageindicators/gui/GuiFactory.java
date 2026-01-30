@@ -45,7 +45,7 @@ public class GuiFactory implements IModGuiFactory {
                 .getCategory(Config.Categories.hudIndicator));
         private static IConfigElement ceTypeOverrides = new ConfigElement(
             Config.getRawConfig()
-                .getCategory(Config.Categories.typeOverrides));
+                .getCategory(Config.Categories.entityOverrides));
         private static IConfigElement ceDebug = new ConfigElement(
             Config.getRawConfig()
                 .getCategory(Config.Categories.debug));
@@ -57,7 +57,7 @@ public class GuiFactory implements IModGuiFactory {
                     // Construct directly here to prevent stale references
                     new ConfigElement(Config.getRawConfig().getCategory(Config.Categories.damageParticles)),
                     new ConfigElement(Config.getRawConfig().getCategory(Config.Categories.hudIndicator)),
-                    new ConfigElement(Config.getRawConfig().getCategory(Config.Categories.typeOverrides)),
+                    new ConfigElement(Config.getRawConfig().getCategory(Config.Categories.entityOverrides)),
                     new ConfigElement(Config.getRawConfig().getCategory(Config.Categories.debug))
                 ),
                 VintageDamageIndicators.MODID,
