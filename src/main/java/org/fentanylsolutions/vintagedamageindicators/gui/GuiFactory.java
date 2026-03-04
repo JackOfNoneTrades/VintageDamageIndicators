@@ -12,7 +12,7 @@ import net.minecraftforge.common.config.ConfigElement;
 import org.fentanylsolutions.vintagedamageindicators.Config;
 import org.fentanylsolutions.vintagedamageindicators.VintageDamageIndicators;
 
-import com.google.common.collect.ImmutableList;
+import com.google.common.collect.Lists;
 
 import cpw.mods.fml.client.IModGuiFactory;
 import cpw.mods.fml.client.config.DummyConfigElement;
@@ -83,7 +83,7 @@ public class GuiFactory implements IModGuiFactory {
         }
 
         private static List<IConfigElement> createRootElements() {
-            return ImmutableList.of(
+            return Lists.newArrayList(
                 new ConfigElement(
                     Config.getRawConfig()
                         .getCategory(Config.Categories.damageParticles)),
