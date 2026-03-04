@@ -90,7 +90,19 @@ public final class EntityOverrideEditorScreenFactory {
         int panelHeight = resolvePanelHeight(parentScreen);
         ModularScreen screen = new ModularScreen(
             VintageDamageIndicators.MODID,
-            context -> buildMainPanel(state, panelHeight)).pausesGame(true);
+            context -> buildMainPanel(state, panelHeight)) {
+
+            @Override
+            public void drawScreen() {
+                GuiScreen guiScreen = getScreenWrapper() != null ? getScreenWrapper().getGuiScreen() : null;
+                if (guiScreen != null) {
+                    GL11.glDisable(GL11.GL_DEPTH_TEST);
+                    guiScreen.drawBackground(0);
+                    GL11.glEnable(GL11.GL_DEPTH_TEST);
+                }
+                super.drawScreen();
+            }
+        }.pausesGame(true);
         screen.getContext()
             .setSettings(new UISettings());
         screen.openParentOnClose(true);
@@ -98,11 +110,7 @@ public final class EntityOverrideEditorScreenFactory {
 
             @Override
             public void drawWorldBackground(int tint) {
-                if (this.mc != null && this.mc.theWorld != null) {
-                    this.drawGradientRect(0, 0, this.width, this.height, -1072689136, -804253680);
-                } else {
-                    this.drawBackground(tint);
-                }
+                this.drawBackground(tint);
             }
         };
     }
