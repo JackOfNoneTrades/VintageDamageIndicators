@@ -84,7 +84,7 @@ public final class EntityOverrideEditorScreenFactory {
     private static final int TYPE_DROPDOWN_WIDTH = PREVIEW_COLUMN_WIDTH - PREVIEW_CHILD_WIDTH - ROW_CHILD_PADDING;
     private static final int CONTROL_ROW_HEIGHT = 18;
     private static final int PREVIEW_MAX_CUSTOM_AGE = 100;
-    private static final int PREVIEW_MIN_CUSTOM_AGE = 1;
+    private static final int PREVIEW_MIN_CUSTOM_AGE = 35;
 
     private EntityOverrideEditorScreenFactory() {}
 

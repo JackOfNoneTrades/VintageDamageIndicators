@@ -1,5 +1,7 @@
 package org.fentanylsolutions.vintagedamageindicators.client;
 
+import java.lang.reflect.Method;
+
 import net.minecraft.entity.EntityLivingBase;
 
 import org.fentanylsolutions.vintagedamageindicators.Config;
@@ -41,7 +43,9 @@ public final class HudPreviewMath {
 
     public static PreviewSettings resolvePreviewSettings(EntityLivingBase target,
         VarInstanceCommon.EntityOverride override, float baseYaw, float basePitch) {
-        boolean child = target.isChild();
+        boolean vanillaChild = target.isChild();
+        boolean customChild = isCustomChild(target);
+        boolean child = vanillaChild || customChild;
         PreviewTuning builtIn = getBuiltInPreviewTuning(target);
         float autoScale = getAutoScale(target);
         float scale = autoScale * builtIn.scaleMultiplier;
@@ -66,11 +70,11 @@ public final class HudPreviewMath {
                     scale *= override.babyScaleFactor;
                 } else if (override.babyScaleModifier > 0.0F) {
                     scale *= override.babyScaleModifier;
-                } else {
+                } else if (!customChild) {
                     scale *= DEFAULT_CHILD_SCALE_MODIFIER;
                 }
             }
-        } else if (target.isChild()) {
+        } else if (vanillaChild) {
             scale *= DEFAULT_CHILD_SCALE_MODIFIER;
         }
 
@@ -79,18 +83,39 @@ public final class HudPreviewMath {
         if (override != null) {
             if (child) {
                 x += Math.round(override.babyXOffset);
-                y += Math.round(override.babyYOffset != 0.0F ? override.babyYOffset : DEFAULT_CHILD_Y_OFFSET);
+                if (override.babyYOffset != 0.0F) {
+                    y += Math.round(override.babyYOffset);
+                } else if (vanillaChild) {
+                    y += DEFAULT_CHILD_Y_OFFSET;
+                }
             } else {
                 x += Math.round(override.xOffset);
                 y += Math.round(override.yOffset);
             }
             yaw += override.yawOffset;
             pitch += override.pitchOffset;
-        } else if (child) {
+        } else if (vanillaChild) {
             y += DEFAULT_CHILD_Y_OFFSET;
         }
 
         return new PreviewSettings(x, y, Math.max(0.1F, scale), yaw, pitch, autoScale, scale, builtIn);
+    }
+
+    private static boolean isCustomChild(EntityLivingBase target) {
+        Boolean adult = invokeBooleanGetter(target, "getIsAdult");
+        return adult != null && !adult.booleanValue();
+    }
+
+    private static Boolean invokeBooleanGetter(EntityLivingBase target, String methodName) {
+        try {
+            Method method = target.getClass()
+                .getMethod(methodName);
+            Object value = method.invoke(target);
+            if (value instanceof Boolean) {
+                return (Boolean) value;
+            }
+        } catch (ReflectiveOperationException ignored) {}
+        return null;
     }
 
     public static float getAutoScale(EntityLivingBase target) {
