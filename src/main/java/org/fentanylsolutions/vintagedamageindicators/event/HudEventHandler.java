@@ -124,6 +124,21 @@ public class HudEventHandler extends Gui {
     }
 
     @SubscribeEvent
+    public void onClientTick(TickEvent.ClientTickEvent event) {
+        if (event.phase != TickEvent.Phase.END) {
+            return;
+        }
+
+        Minecraft minecraft = Minecraft.getMinecraft();
+        if (minecraft.theWorld == null) {
+            ClientPotionEffectsCache.clear();
+            return;
+        }
+
+        ClientPotionEffectsCache.tick();
+    }
+
+    @SubscribeEvent
     public void onRenderTick(TickEvent.RenderTickEvent event) {
         if (event.phase != TickEvent.Phase.START) {
             return;
@@ -606,7 +621,7 @@ public class HudEventHandler extends Gui {
     }
 
     private String formatPotionDuration(int duration) {
-        return StringUtils.ticksToElapsedTime(Math.max(0, duration) / 20);
+        return StringUtils.ticksToElapsedTime(Math.max(0, duration));
     }
 
     private String formatHealth(float value) {
