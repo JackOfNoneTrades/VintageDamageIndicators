@@ -1,8 +1,13 @@
 package org.fentanylsolutions.vintagedamageindicators;
 
+import net.minecraftforge.common.MinecraftForge;
+
+import org.fentanylsolutions.vintagedamageindicators.event.PotionSyncEventHandler;
+import org.fentanylsolutions.vintagedamageindicators.network.VDINetwork;
 import org.fentanylsolutions.vintagedamageindicators.util.MobUtil;
 import org.fentanylsolutions.vintagedamageindicators.varinstances.VarInstanceCommon;
 
+import cpw.mods.fml.common.FMLCommonHandler;
 import cpw.mods.fml.common.event.FMLInitializationEvent;
 import cpw.mods.fml.common.event.FMLPostInitializationEvent;
 import cpw.mods.fml.common.event.FMLPreInitializationEvent;
@@ -16,11 +21,16 @@ public class CommonProxy {
         VintageDamageIndicators.varInstanceCommon = new VarInstanceCommon();
         VintageDamageIndicators.LOG.info("I am " + VintageDamageIndicators.MODID + " at version " + Tags.VERSION);
         Config.loadConfig(VintageDamageIndicators.confFile);
+        VDINetwork.initCommon();
     }
 
     // load "Do your mod setup. Build whatever data structures you care about. Register recipes." (Remove if not needed)
     public void init(FMLInitializationEvent event) {
-
+        PotionSyncEventHandler potionSyncEventHandler = new PotionSyncEventHandler();
+        MinecraftForge.EVENT_BUS.register(potionSyncEventHandler);
+        FMLCommonHandler.instance()
+            .bus()
+            .register(potionSyncEventHandler);
     }
 
     // postInit "Handle interaction with other mods, complete your setup based on this." (Remove if not needed)

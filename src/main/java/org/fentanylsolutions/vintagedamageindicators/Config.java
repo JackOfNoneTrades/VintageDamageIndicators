@@ -43,6 +43,8 @@ public class Config {
     public static float hudEntitySize = 38.0f;
     public static float hudEntityYaw = 35.0f;
     public static float hudEntityPitch = -12.0f;
+    public static boolean hudPotionEffectsEnabled = true;
+    public static boolean hudPotionEffectTime = true;
     public static boolean hudIndicatorAlignLeft = true;
     public static boolean hudIndicatorAlignTop = true;
     public static int hudIndicatorPositionX = 10;
@@ -259,6 +261,16 @@ public class Config {
                 -90,
                 90,
                 "The global pitch angle used for entity previews.");
+            hudPotionEffectsEnabled = config.getBoolean(
+                "hudPotionEffectsEnabled",
+                Categories.hudIndicator,
+                hudPotionEffectsEnabled,
+                "Whether active potion effects are shown below the health bar.");
+            hudPotionEffectTime = config.getBoolean(
+                "hudPotionEffectTime",
+                Categories.hudIndicator,
+                hudPotionEffectTime,
+                "Whether the remaining potion duration is shown next to each potion icon.");
             hudIndicatorAlignLeft = config.getBoolean(
                 "hudIndicatorAlignLeft",
                 Categories.hudIndicator,

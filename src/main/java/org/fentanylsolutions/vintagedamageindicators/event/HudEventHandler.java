@@ -1,6 +1,11 @@
 package org.fentanylsolutions.vintagedamageindicators.event;
 
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
+import java.util.WeakHashMap;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.FontRenderer;
@@ -10,6 +15,8 @@ import net.minecraft.client.gui.ScaledResolution;
 import net.minecraft.client.renderer.OpenGlHelper;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityLivingBase;
+import net.minecraft.potion.Potion;
+import net.minecraft.potion.PotionEffect;
 import net.minecraft.util.AxisAlignedBB;
 import net.minecraft.util.MovingObjectPosition;
 import net.minecraft.util.ResourceLocation;
@@ -36,6 +43,41 @@ public class HudEventHandler extends Gui {
     private static final int HEALTH_BAR_Y = HudPreviewMath.HEALTH_BAR_Y;
     private static final int HEALTH_BAR_WIDTH = HudPreviewMath.HEALTH_BAR_WIDTH;
     private static final int HEALTH_BAR_HEIGHT = HudPreviewMath.HEALTH_BAR_HEIGHT;
+    private static final int POTION_PANEL_X = HEALTH_BAR_X - 4;
+    private static final int POTION_PANEL_Y = HEALTH_BAR_Y + HEALTH_BAR_HEIGHT + 2;
+    private static final int POTION_PANEL_HEIGHT = 26;
+    private static final int POTION_LEFT_WIDTH = 7;
+    private static final int POTION_RIGHT_WIDTH = 6;
+    private static final int POTION_CONTENT_PADDING_LEFT = 6;
+    private static final int POTION_CONTENT_PADDING_RIGHT = 4;
+    private static final int POTION_ICON_SIZE = 18;
+    private static final int POTION_ICON_Y = 4;
+    private static final int POTION_ENTRY_GAP = 4;
+    private static final int POTION_TIME_GAP = 2;
+    private static final int POTION_TIME_Y = 9;
+    private static final int POTION_TIME_COLOR = 0xFFFFFF;
+    private static final ResourceLocation POTION_LEFT_TEXTURE = new ResourceLocation(
+        VintageDamageIndicators.MODID,
+        "textures/gui/potion_left.png");
+    private static final ResourceLocation POTION_LEFT_OVERLAY_TEXTURE = new ResourceLocation(
+        VintageDamageIndicators.MODID,
+        "textures/gui/potion_left_overlay.png");
+    private static final ResourceLocation POTION_MIDDLE_TEXTURE = new ResourceLocation(
+        VintageDamageIndicators.MODID,
+        "textures/gui/potion_middle.png");
+    private static final ResourceLocation POTION_MIDDLE_OVERLAY_TEXTURE = new ResourceLocation(
+        VintageDamageIndicators.MODID,
+        "textures/gui/potion_middle_overlay.png");
+    private static final ResourceLocation POTION_RIGHT_TEXTURE = new ResourceLocation(
+        VintageDamageIndicators.MODID,
+        "textures/gui/potion_right.png");
+    private static final ResourceLocation POTION_RIGHT_OVERLAY_TEXTURE = new ResourceLocation(
+        VintageDamageIndicators.MODID,
+        "textures/gui/potion_right_overlay.png");
+    private static final ResourceLocation INVENTORY_TEXTURE = new ResourceLocation(
+        "textures/gui/container/inventory.png");
+
+    private final WeakHashMap<EntityLivingBase, PotionStripData> potionStripCache = new WeakHashMap<>();
 
     @SubscribeEvent
     public void onBossBarRender(RenderGameOverlayEvent.Pre event) {
@@ -188,9 +230,11 @@ public class HudEventHandler extends Gui {
 
     private void renderHud(ScaledResolution resolution, EntityLivingBase target, MobTypes mobType) {
         Minecraft minecraft = Minecraft.getMinecraft();
+        PotionStripData potionStrip = getPotionStripData(target, minecraft.fontRenderer);
         float scale = Config.hudIndicatorSize;
+        int hudWidth = Math.max(PANEL_WIDTH, POTION_PANEL_X + potionStrip.stripWidth);
         int x = Config.hudIndicatorAlignLeft ? Config.hudIndicatorPositionX
-            : resolution.getScaledWidth() - Math.round(PANEL_WIDTH * scale) - Config.hudIndicatorPositionX;
+            : resolution.getScaledWidth() - Math.round(hudWidth * scale) - Config.hudIndicatorPositionX;
         int y = Config.hudIndicatorAlignTop ? Config.hudIndicatorPositionY
             : resolution.getScaledHeight() - Math.round(PANEL_HEIGHT * scale) - Config.hudIndicatorPositionY;
         x = Math.max(0, x);
@@ -207,6 +251,7 @@ public class HudEventHandler extends Gui {
         drawHealthBar(minecraft, target);
         drawName(minecraft.fontRenderer, target.getCommandSenderName());
         drawHealthText(minecraft.fontRenderer, target);
+        drawPotionStrip(minecraft, minecraft.fontRenderer, potionStrip);
 
         GL11.glPopMatrix();
     }
@@ -331,6 +376,166 @@ public class HudEventHandler extends Gui {
         GL11.glPopMatrix();
     }
 
+    private void drawPotionStrip(Minecraft minecraft, FontRenderer fontRenderer, PotionStripData potionStrip) {
+        if (potionStrip.entries.isEmpty()) {
+            return;
+        }
+
+        int middleWidth = potionStrip.contentWidth;
+        int rightX = POTION_PANEL_X + POTION_LEFT_WIDTH + middleWidth;
+
+        minecraft.getTextureManager()
+            .bindTexture(POTION_LEFT_TEXTURE);
+        drawStandaloneTexture(POTION_PANEL_X, POTION_PANEL_Y, POTION_LEFT_WIDTH, POTION_PANEL_HEIGHT);
+
+        if (middleWidth > 0) {
+            minecraft.getTextureManager()
+                .bindTexture(POTION_MIDDLE_TEXTURE);
+            for (int offset = 0; offset < middleWidth; offset++) {
+                drawStandaloneTexture(
+                    POTION_PANEL_X + POTION_LEFT_WIDTH + offset,
+                    POTION_PANEL_Y,
+                    1,
+                    POTION_PANEL_HEIGHT);
+            }
+        }
+
+        minecraft.getTextureManager()
+            .bindTexture(POTION_RIGHT_TEXTURE);
+        drawStandaloneTexture(rightX, POTION_PANEL_Y, POTION_RIGHT_WIDTH, POTION_PANEL_HEIGHT);
+
+        GL11.glEnable(GL11.GL_BLEND);
+        GL11.glBlendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA);
+        GL11.glColor4f(1.0F, 1.0F, 1.0F, Config.hudIndicatorBackgroundOpacity);
+
+        minecraft.getTextureManager()
+            .bindTexture(POTION_LEFT_OVERLAY_TEXTURE);
+        drawStandaloneTexture(POTION_PANEL_X, POTION_PANEL_Y, POTION_LEFT_WIDTH, POTION_PANEL_HEIGHT);
+
+        if (middleWidth > 0) {
+            minecraft.getTextureManager()
+                .bindTexture(POTION_MIDDLE_OVERLAY_TEXTURE);
+            for (int offset = 0; offset < middleWidth; offset++) {
+                drawStandaloneTexture(
+                    POTION_PANEL_X + POTION_LEFT_WIDTH + offset,
+                    POTION_PANEL_Y,
+                    1,
+                    POTION_PANEL_HEIGHT);
+            }
+        }
+
+        minecraft.getTextureManager()
+            .bindTexture(POTION_RIGHT_OVERLAY_TEXTURE);
+        drawStandaloneTexture(rightX, POTION_PANEL_Y, POTION_RIGHT_WIDTH, POTION_PANEL_HEIGHT);
+
+        GL11.glColor4f(1.0F, 1.0F, 1.0F, 1.0F);
+        GL11.glDisable(GL11.GL_BLEND);
+
+        int drawX = POTION_PANEL_X + POTION_CONTENT_PADDING_LEFT;
+
+        for (int index = 0; index < potionStrip.entries.size(); index++) {
+            PotionEntry entry = potionStrip.entries.get(index);
+            int iconIndex = entry.potion.getStatusIconIndex();
+            GL11.glColor4f(1.0F, 1.0F, 1.0F, 1.0F);
+            GL11.glEnable(GL11.GL_TEXTURE_2D);
+            minecraft.getTextureManager()
+                .bindTexture(INVENTORY_TEXTURE);
+            drawTexturedModalRect(
+                drawX,
+                POTION_PANEL_Y + POTION_ICON_Y,
+                iconIndex % 8 * 18,
+                198 + iconIndex / 8 * 18,
+                POTION_ICON_SIZE,
+                POTION_ICON_SIZE);
+
+            if (Config.hudPotionEffectTime) {
+                fontRenderer.drawString(
+                    entry.timeText,
+                    drawX + POTION_ICON_SIZE + POTION_TIME_GAP,
+                    POTION_PANEL_Y + POTION_TIME_Y,
+                    POTION_TIME_COLOR);
+                GL11.glColor4f(1.0F, 1.0F, 1.0F, 1.0F);
+                GL11.glEnable(GL11.GL_TEXTURE_2D);
+            }
+
+            drawX += entry.width;
+            if (index + 1 < potionStrip.entries.size()) {
+                drawX += POTION_ENTRY_GAP;
+            }
+        }
+    }
+
+    private void drawStandaloneTexture(int x, int y, int width, int height) {
+        Gui.func_146110_a(x, y, 0.0F, 0.0F, width, height, (float) width, (float) height);
+    }
+
+    private PotionStripData getPotionStripData(EntityLivingBase target, FontRenderer fontRenderer) {
+        if (!Config.hudPotionEffectsEnabled) {
+            return PotionStripData.EMPTY;
+        }
+
+        PotionStripData cached = this.potionStripCache.get(target);
+        if (cached != null && cached.tick == target.ticksExisted && cached.showTime == Config.hudPotionEffectTime) {
+            return cached;
+        }
+
+        Collection<?> activeEffects = target.getActivePotionEffects();
+        if (activeEffects == null || activeEffects.isEmpty()) {
+            PotionStripData empty = PotionStripData.empty(target.ticksExisted, Config.hudPotionEffectTime);
+            this.potionStripCache.put(target, empty);
+            return empty;
+        }
+
+        List<PotionEntry> entries = new ArrayList<>();
+        for (Object effectObject : activeEffects) {
+            if (!(effectObject instanceof PotionEffect)) {
+                continue;
+            }
+
+            PotionEffect effect = (PotionEffect) effectObject;
+            if (effect.getPotionID() < 0 || effect.getPotionID() >= Potion.potionTypes.length) {
+                continue;
+            }
+
+            Potion potion = Potion.potionTypes[effect.getPotionID()];
+            if (potion == null || !potion.hasStatusIcon()) {
+                continue;
+            }
+
+            String timeText = Config.hudPotionEffectTime ? Potion.getDurationString(effect) : "";
+            int entryWidth = POTION_ICON_SIZE;
+            if (Config.hudPotionEffectTime) {
+                entryWidth += POTION_TIME_GAP + fontRenderer.getStringWidth(timeText);
+            }
+            entries.add(new PotionEntry(potion, timeText, entryWidth));
+        }
+
+        if (entries.isEmpty()) {
+            PotionStripData empty = PotionStripData.empty(target.ticksExisted, Config.hudPotionEffectTime);
+            this.potionStripCache.put(target, empty);
+            return empty;
+        }
+
+        Collections.sort(entries, Comparator.comparingInt(entry -> entry.potion.id));
+
+        int contentWidth = POTION_CONTENT_PADDING_LEFT + POTION_CONTENT_PADDING_RIGHT;
+        for (int index = 0; index < entries.size(); index++) {
+            contentWidth += entries.get(index).width;
+            if (index + 1 < entries.size()) {
+                contentWidth += POTION_ENTRY_GAP;
+            }
+        }
+
+        PotionStripData built = new PotionStripData(
+            entries,
+            POTION_LEFT_WIDTH + contentWidth + POTION_RIGHT_WIDTH,
+            contentWidth,
+            target.ticksExisted,
+            Config.hudPotionEffectTime);
+        this.potionStripCache.put(target, built);
+        return built;
+    }
+
     private String formatHealth(float value) {
         float rounded = Math.round(value * 5.0F) / 5.0F;
         String text = Float.toString(rounded);
@@ -380,5 +585,47 @@ public class HudEventHandler extends Gui {
                 + preview.pitch
                 + " override="
                 + HudPreviewMath.describeOverride(override));
+    }
+
+    private static final class PotionStripData {
+
+        private static final PotionStripData EMPTY = new PotionStripData(
+            Collections.<PotionEntry>emptyList(),
+            0,
+            0,
+            -1,
+            false);
+
+        private final List<PotionEntry> entries;
+        private final int stripWidth;
+        private final int contentWidth;
+        private final int tick;
+        private final boolean showTime;
+
+        private PotionStripData(List<PotionEntry> entries, int stripWidth, int contentWidth, int tick,
+            boolean showTime) {
+            this.entries = entries;
+            this.stripWidth = stripWidth;
+            this.contentWidth = contentWidth;
+            this.tick = tick;
+            this.showTime = showTime;
+        }
+
+        private static PotionStripData empty(int tick, boolean showTime) {
+            return new PotionStripData(Collections.<PotionEntry>emptyList(), 0, 0, tick, showTime);
+        }
+    }
+
+    private static final class PotionEntry {
+
+        private final Potion potion;
+        private final String timeText;
+        private final int width;
+
+        private PotionEntry(Potion potion, String timeText, int width) {
+            this.potion = potion;
+            this.timeText = timeText;
+            this.width = width;
+        }
     }
 }

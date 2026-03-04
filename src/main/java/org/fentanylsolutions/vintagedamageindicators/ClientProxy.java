@@ -4,6 +4,7 @@ import net.minecraftforge.common.MinecraftForge;
 
 import org.fentanylsolutions.vintagedamageindicators.event.HudEventHandler;
 import org.fentanylsolutions.vintagedamageindicators.event.ParticleEventHandler;
+import org.fentanylsolutions.vintagedamageindicators.network.VDINetwork;
 import org.fentanylsolutions.vintagedamageindicators.varinstances.VarInstanceClient;
 
 import cpw.mods.fml.common.FMLCommonHandler;
@@ -19,6 +20,7 @@ public class ClientProxy extends CommonProxy {
     public void preInit(FMLPreInitializationEvent event) {
         super.preInit(event);
         VintageDamageIndicators.varInstanceClient = new VarInstanceClient();
+        VDINetwork.initClient();
     }
 
     @Override
