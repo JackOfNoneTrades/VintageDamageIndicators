@@ -12,6 +12,7 @@ import net.minecraft.client.renderer.OpenGlHelper;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityLivingBase;
 import net.minecraft.entity.boss.EntityWither;
+import net.minecraft.entity.monster.EntityCreeper;
 import net.minecraft.entity.monster.EntityEnderman;
 import net.minecraft.entity.monster.EntityGhast;
 import net.minecraft.entity.monster.EntityIronGolem;
@@ -20,6 +21,8 @@ import net.minecraft.entity.monster.EntitySkeleton;
 import net.minecraft.entity.monster.EntitySlime;
 import net.minecraft.entity.monster.EntityWitch;
 import net.minecraft.entity.monster.EntityZombie;
+import net.minecraft.entity.passive.EntityChicken;
+import net.minecraft.entity.passive.EntityMooshroom;
 import net.minecraft.entity.passive.EntityOcelot;
 import net.minecraft.entity.passive.EntitySquid;
 import net.minecraft.entity.passive.EntityVillager;
@@ -50,6 +53,8 @@ public class HudEventHandler extends Gui {
     private static final int HEALTH_BAR_Y = 25;
     private static final int HEALTH_BAR_WIDTH = 124;
     private static final int HEALTH_BAR_HEIGHT = 18;
+    private static final float ENTITY_RENDER_YAW_INPUT = 35.0F;
+    private static final float ENTITY_RENDER_PITCH_INPUT = -12.0F;
 
     @SubscribeEvent
     public void onBossBarRender(RenderGameOverlayEvent.Pre event) {
@@ -215,7 +220,7 @@ public class HudEventHandler extends Gui {
         GL11.glScalef(scale, scale, 1.0F);
 
         drawBackground(minecraft);
-        drawEntityPreview(target);
+        drawEntityPreview(target, mobType);
         drawFrame(minecraft);
         drawMobTypeIcon(minecraft, mobType);
         drawHealthBar(minecraft, target);
@@ -246,9 +251,15 @@ public class HudEventHandler extends Gui {
         GL11.glDisable(GL11.GL_BLEND);
     }
 
-    private void drawEntityPreview(EntityLivingBase target) {
-        PreviewSettings preview = getPreviewSettings(target);
-        GuiInventory.func_147046_a(preview.x, preview.y, preview.scale, 0.0F, 0.0F, target);
+    private void drawEntityPreview(EntityLivingBase target, MobTypes mobType) {
+        PreviewSettings preview = getPreviewSettings(target, mobType);
+        GuiInventory.func_147046_a(
+            preview.x,
+            preview.y,
+            preview.scale,
+            ENTITY_RENDER_YAW_INPUT,
+            ENTITY_RENDER_PITCH_INPUT,
+            target);
         GL11.glEnable(GL11.GL_TEXTURE_2D);
         GL11.glDisable(GL11.GL_DEPTH_TEST);
         GL11.glDisable(GL11.GL_LIGHTING);
@@ -258,7 +269,7 @@ public class HudEventHandler extends Gui {
         OpenGlHelper.setActiveTexture(OpenGlHelper.defaultTexUnit);
     }
 
-    private PreviewSettings getPreviewSettings(EntityLivingBase target) {
+    private PreviewSettings getPreviewSettings(EntityLivingBase target, MobTypes mobType) {
         VarInstanceCommon.EntityOverride override = getEntityOverride(target);
         PreviewTuning builtIn = getBuiltInPreviewTuning(target);
         float autoScale = getAutoScale(target);
@@ -284,7 +295,7 @@ public class HudEventHandler extends Gui {
             y += Math.round(override.yOffset);
         }
 
-        logPreviewSettings(target, override, builtIn, autoScale, scale, x, y);
+        logPreviewSettings(target, mobType, override, builtIn, autoScale, scale, x, y);
 
         return new PreviewSettings(x, y, Math.max(1, Math.round(scale)));
     }
@@ -316,6 +327,15 @@ public class HudEventHandler extends Gui {
         if (target instanceof EntityWitch) {
             return new PreviewTuning(0.84F, 0, 4);
         }
+        if (target instanceof EntityMooshroom) {
+            return new PreviewTuning(0.9F, 0, 2);
+        }
+        if (target instanceof EntityChicken) {
+            return new PreviewTuning(0.86F, 0, 1);
+        }
+        if (target instanceof EntityCreeper) {
+            return new PreviewTuning(1.05F, 0, 2);
+        }
         if (target instanceof EntityEnderman) {
             return new PreviewTuning(0.68F, 0, 8);
         }
@@ -326,7 +346,7 @@ public class HudEventHandler extends Gui {
             return new PreviewTuning(0.72F, 0, 8);
         }
         if (target instanceof EntityGhast) {
-            return new PreviewTuning(0.65F, 0, 10);
+            return new PreviewTuning(0.58F, 0, 2);
         }
         if (target instanceof EntitySquid) {
             return new PreviewTuning(0.9F, 0, -4);
@@ -335,7 +355,7 @@ public class HudEventHandler extends Gui {
             return new PreviewTuning(1.1F, 0, 0);
         }
         if (target instanceof EntitySlime || target instanceof EntityMagmaCube) {
-            return new PreviewTuning(0.9F, 0, 4);
+            return new PreviewTuning(0.85F, 0, 1);
         }
         return PreviewTuning.DEFAULT;
     }
@@ -351,7 +371,10 @@ public class HudEventHandler extends Gui {
     private void drawMobTypeIcon(Minecraft minecraft, MobTypes mobType) {
         minecraft.getTextureManager()
             .bindTexture(mobType.getTexture());
-        drawTexturedModalRect(5, 55, 0, 0, 18, 18);
+        GL11.glEnable(GL11.GL_BLEND);
+        GL11.glBlendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA);
+        Gui.func_146110_a(5, 55, 0.0F, 0.0F, 18, 18, 18.0F, 18.0F);
+        GL11.glDisable(GL11.GL_BLEND);
     }
 
     private void drawHealthBar(Minecraft minecraft, EntityLivingBase target) {
@@ -424,8 +447,9 @@ public class HudEventHandler extends Gui {
         return text;
     }
 
-    private void logPreviewSettings(EntityLivingBase target, VarInstanceCommon.EntityOverride override,
-        PreviewTuning builtIn, float autoScale, float finalScale, int finalX, int finalY) {
+    private void logPreviewSettings(EntityLivingBase target, MobTypes mobType,
+        VarInstanceCommon.EntityOverride override, PreviewTuning builtIn, float autoScale, float finalScale, int finalX,
+        int finalY) {
         if (!VintageDamageIndicators.DEBUG_MODE && !Config.debugMode) {
             return;
         }
@@ -449,6 +473,8 @@ public class HudEventHandler extends Gui {
         VintageDamageIndicators.debug(
             "Preview " + target.getClass()
                 .getName()
+                + " type="
+                + mobType
                 + " bbox="
                 + target.width
                 + "x"

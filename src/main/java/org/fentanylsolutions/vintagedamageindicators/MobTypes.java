@@ -6,7 +6,6 @@ import net.minecraft.entity.EntityLivingBase;
 import net.minecraft.entity.EnumCreatureAttribute;
 import net.minecraft.entity.boss.IBossDisplayData;
 import net.minecraft.entity.monster.EntityGolem;
-import net.minecraft.entity.monster.EntityWitch;
 import net.minecraft.entity.monster.IMob;
 import net.minecraft.entity.passive.EntityAmbientCreature;
 import net.minecraft.entity.passive.EntityAnimal;
@@ -59,14 +58,14 @@ public enum MobTypes {
         if (entity instanceof IBossDisplayData) {
             return BOSS;
         }
+        if (entity instanceof EntityVillager) {
+            return VILLAGER;
+        }
         if (isIllagerLike(entity)) {
             return ILLAGER;
         }
         if (entity instanceof EntityGolem) {
             return GOLEM;
-        }
-        if (entity instanceof EntityVillager || entity instanceof EntityWitch) {
-            return VILLAGER;
         }
 
         boolean hostile = entity instanceof IMob;
@@ -102,7 +101,7 @@ public enum MobTypes {
         String className = entity.getClass()
             .getName()
             .toLowerCase(Locale.ROOT);
-        return className.contains("illager") || className.contains("pillager")
+        return (className.contains("illager") && !className.contains("villager")) || className.contains("pillager")
             || className.contains("evoker")
             || className.contains("vindicator")
             || className.contains("illusioner")
