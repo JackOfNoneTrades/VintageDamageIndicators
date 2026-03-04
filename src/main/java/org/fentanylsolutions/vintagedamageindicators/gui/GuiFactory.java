@@ -44,6 +44,8 @@ public class GuiFactory implements IModGuiFactory {
 
     public static class ConfigGui extends GuiConfig {
 
+        private static final int LOGO_PREVIEW_BUTTON_ID = 9107;
+
         public ConfigGui(GuiScreen parentScreen) {
             super(
                 parentScreen,
@@ -57,19 +59,22 @@ public class GuiFactory implements IModGuiFactory {
 
         @Override
         public void initGui() {
-            // You can add buttons and initialize fields here
             super.initGui();
+            this.buttonList.add(new GuiButton(LOGO_PREVIEW_BUTTON_ID, this.width - 18, 4, 14, 14, "L"));
             VintageDamageIndicators.debug("Initializing config gui");
         }
 
         @Override
         public void drawScreen(int mouseX, int mouseY, float partialTicks) {
-            // You can do things like create animations, draw additional elements, etc. here
             super.drawScreen(mouseX, mouseY, partialTicks);
         }
 
         @Override
         protected void actionPerformed(GuiButton b) {
+            if (b.id == LOGO_PREVIEW_BUTTON_ID) {
+                this.mc.displayGuiScreen(new LogoPreviewScreen(this));
+                return;
+            }
             VintageDamageIndicators.debug("Config button id " + b.id + " pressed");
             super.actionPerformed(b);
             /* "Done" button */
