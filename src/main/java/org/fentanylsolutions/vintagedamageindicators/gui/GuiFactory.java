@@ -1,5 +1,6 @@
 package org.fentanylsolutions.vintagedamageindicators.gui;
 
+import java.util.List;
 import java.util.Set;
 
 import net.minecraft.client.Minecraft;
@@ -14,8 +15,11 @@ import org.fentanylsolutions.vintagedamageindicators.VintageDamageIndicators;
 import com.google.common.collect.ImmutableList;
 
 import cpw.mods.fml.client.IModGuiFactory;
+import cpw.mods.fml.client.config.DummyConfigElement;
 import cpw.mods.fml.client.config.GuiConfig;
+import cpw.mods.fml.client.config.GuiConfigEntries;
 import cpw.mods.fml.client.config.IConfigElement;
+import cpw.mods.fml.common.Loader;
 
 @SuppressWarnings("unused")
 public class GuiFactory implements IModGuiFactory {
@@ -40,36 +44,10 @@ public class GuiFactory implements IModGuiFactory {
 
     public static class ConfigGui extends GuiConfig {
 
-        private static IConfigElement ceDamageParticles = new ConfigElement(
-            Config.getRawConfig()
-                .getCategory(Config.Categories.damageParticles));
-        private static IConfigElement ceHudIndicator = new ConfigElement(
-            Config.getRawConfig()
-                .getCategory(Config.Categories.hudIndicator));
-        private static IConfigElement ceTypeOverrides = new ConfigElement(
-            Config.getRawConfig()
-                .getCategory(Config.Categories.entityOverrides));
-        private static IConfigElement ceDebug = new ConfigElement(
-            Config.getRawConfig()
-                .getCategory(Config.Categories.debug));
-
         public ConfigGui(GuiScreen parentScreen) {
             super(
                 parentScreen,
-                ImmutableList.of(
-                    // Construct directly here to prevent stale references
-                    new ConfigElement(
-                        Config.getRawConfig()
-                            .getCategory(Config.Categories.damageParticles)),
-                    new ConfigElement(
-                        Config.getRawConfig()
-                            .getCategory(Config.Categories.hudIndicator)),
-                    new ConfigElement(
-                        Config.getRawConfig()
-                            .getCategory(Config.Categories.entityOverrides)),
-                    new ConfigElement(
-                        Config.getRawConfig()
-                            .getCategory(Config.Categories.debug))),
+                createRootElements(),
                 VintageDamageIndicators.MODID,
                 VintageDamageIndicators.MODID,
                 false,
@@ -102,6 +80,73 @@ public class GuiFactory implements IModGuiFactory {
                     .save();
                 Config.loadConfig(VintageDamageIndicators.confFile);
             }
+        }
+
+        private static List<IConfigElement> createRootElements() {
+            return ImmutableList.of(
+                new ConfigElement(
+                    Config.getRawConfig()
+                        .getCategory(Config.Categories.damageParticles)),
+                new ConfigElement(
+                    Config.getRawConfig()
+                        .getCategory(Config.Categories.hudIndicator)),
+                createEntityOverrideCategory(),
+                new ConfigElement(
+                    Config.getRawConfig()
+                        .getCategory(Config.Categories.debug)));
+        }
+
+        @SuppressWarnings({ "rawtypes", "unchecked" })
+        private static IConfigElement createEntityOverrideCategory() {
+            IConfigElement backingElement = new ConfigElement(
+                Config.getRawConfig()
+                    .getCategory(Config.Categories.entityOverrides));
+            return new DummyConfigElement.DummyCategoryElement(
+                "Entity Display Overrides",
+                "vintagedamageindicators.configgui.entity-display-overrides",
+                backingElement.getChildElements(),
+                EntityOverrideCategoryEntry.class);
+        }
+    }
+
+    public static class EntityOverrideCategoryEntry extends GuiConfigEntries.CategoryEntry {
+
+        public EntityOverrideCategoryEntry(GuiConfig owningScreen, GuiConfigEntries owningEntryList,
+            IConfigElement configElement) {
+            super(owningScreen, owningEntryList, configElement);
+        }
+
+        @Override
+        protected GuiScreen buildChildScreen() {
+            GuiScreen customScreen = tryCreateEntityOverrideScreen(this.owningScreen);
+            if (customScreen != null) {
+                return customScreen;
+            }
+            return new GuiConfig(
+                this.owningScreen,
+                this.configElement.getChildElements(),
+                this.owningScreen.modID,
+                this.owningScreen.allRequireWorldRestart || this.configElement.requiresWorldRestart(),
+                this.owningScreen.allRequireMcRestart || this.configElement.requiresMcRestart(),
+                this.owningScreen.title,
+                ((this.owningScreen.titleLine2 == null ? "" : this.owningScreen.titleLine2) + " > " + this.name));
+        }
+    }
+
+    private static GuiScreen tryCreateEntityOverrideScreen(GuiScreen parentScreen) {
+        if (!Loader.isModLoaded("modularui2")) {
+            return null;
+        }
+        try {
+            Class<?> factoryClass = Class
+                .forName("org.fentanylsolutions.vintagedamageindicators.gui.mui.EntityOverrideEditorScreenFactory");
+            return (GuiScreen) factoryClass.getMethod("create", GuiScreen.class)
+                .invoke(null, parentScreen);
+        } catch (ReflectiveOperationException | LinkageError e) {
+            VintageDamageIndicators.LOG.warn(
+                "Failed to open the ModularUI2 entity override editor. Falling back to the default config screen.",
+                e);
+            return null;
         }
     }
 }

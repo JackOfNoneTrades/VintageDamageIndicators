@@ -41,6 +41,8 @@ public class Config {
     public static float hudIndicatorSize = 0.75f;
     public static float hudIndicatorBackgroundOpacity = 0.75f;
     public static float hudEntitySize = 38.0f;
+    public static float hudEntityYaw = 35.0f;
+    public static float hudEntityPitch = -12.0f;
     public static boolean hudIndicatorAlignLeft = true;
     public static boolean hudIndicatorAlignTop = true;
     public static int hudIndicatorPositionX = 10;
@@ -243,6 +245,20 @@ public class Config {
                 0,
                 2000,
                 "The size in pixels a usual entity should render as in the HUD indicator.");
+            hudEntityYaw = config.getFloat(
+                "hudEntityYaw",
+                Categories.hudIndicator,
+                hudEntityYaw,
+                -180,
+                180,
+                "The global yaw angle used for entity previews.");
+            hudEntityPitch = config.getFloat(
+                "hudEntityPitch",
+                Categories.hudIndicator,
+                hudEntityPitch,
+                -90,
+                90,
+                "The global pitch angle used for entity previews.");
             hudIndicatorAlignLeft = config.getBoolean(
                 "hudIndicatorAlignLeft",
                 Categories.hudIndicator,
@@ -317,5 +333,30 @@ public class Config {
 
     public static Configuration getRawConfig() {
         return config;
+    }
+
+    public static void setEntityOverrides(String[] overrides) {
+        entityOverrides = overrides == null ? new String[0] : overrides;
+        if (config != null) {
+            config.get(Categories.entityOverrides, "entityOverrides", new String[0])
+                .set(entityOverrides);
+        }
+    }
+
+    public static void setHudPreviewAngles(float yaw, float pitch) {
+        hudEntityYaw = yaw;
+        hudEntityPitch = pitch;
+        if (config != null) {
+            config.get(Categories.hudIndicator, "hudEntityYaw", hudEntityYaw)
+                .set((double) hudEntityYaw);
+            config.get(Categories.hudIndicator, "hudEntityPitch", hudEntityPitch)
+                .set((double) hudEntityPitch);
+        }
+    }
+
+    public static void save() {
+        if (config != null) {
+            config.save();
+        }
     }
 }

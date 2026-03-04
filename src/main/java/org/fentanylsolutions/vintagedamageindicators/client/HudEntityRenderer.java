@@ -1,0 +1,142 @@
+package org.fentanylsolutions.vintagedamageindicators.client;
+
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.renderer.OpenGlHelper;
+import net.minecraft.client.renderer.RenderHelper;
+import net.minecraft.client.renderer.entity.RenderManager;
+import net.minecraft.client.renderer.texture.TextureManager;
+import net.minecraft.client.settings.GameSettings;
+import net.minecraft.entity.Entity;
+import net.minecraft.entity.EntityLivingBase;
+import net.minecraft.entity.boss.EntityDragon;
+import net.minecraft.world.World;
+
+import org.lwjgl.opengl.GL11;
+import org.lwjgl.opengl.GL12;
+
+public final class HudEntityRenderer {
+
+    private HudEntityRenderer() {}
+
+    public static void drawEntity(int x, int y, float scale, float yawInput, float pitchInput,
+        EntityLivingBase entity) {
+        if (entity == null) {
+            return;
+        }
+
+        Minecraft minecraft = Minecraft.getMinecraft();
+        RenderManager renderManager = RenderManager.instance;
+        World oldWorld = renderManager.worldObj;
+        TextureManager oldRenderEngine = renderManager.renderEngine;
+        GameSettings oldOptions = renderManager.options;
+        EntityLivingBase oldLivingPlayer = renderManager.livingPlayer;
+        Entity oldViewEntity = renderManager.field_147941_i;
+        double oldViewerPosX = renderManager.viewerPosX;
+        double oldViewerPosY = renderManager.viewerPosY;
+        double oldViewerPosZ = renderManager.viewerPosZ;
+        float oldPlayerViewX = renderManager.playerViewX;
+        float oldPlayerViewY = RenderManager.instance.playerViewY;
+        float oldRenderYawOffset = entity.renderYawOffset;
+        float oldRotationYaw = entity.rotationYaw;
+        float oldRotationPitch = entity.rotationPitch;
+        float oldPrevRotationYawHead = entity.prevRotationYawHead;
+        float oldRotationYawHead = entity.rotationYawHead;
+        int oldDragonRingBufferIndex = 0;
+        double[][] oldDragonRingBuffer = null;
+        double oldPosY = entity.posY;
+
+        EntityLivingBase viewLiving = minecraft.thePlayer != null ? minecraft.thePlayer : entity;
+        Entity viewEntity = minecraft.renderViewEntity != null ? minecraft.renderViewEntity : viewLiving;
+        World renderWorld = minecraft.theWorld != null ? minecraft.theWorld : entity.worldObj;
+        renderManager.cacheActiveRenderInfo(
+            renderWorld,
+            minecraft.getTextureManager(),
+            minecraft.fontRenderer,
+            viewLiving,
+            viewEntity,
+            minecraft.gameSettings,
+            1.0F);
+
+        OpenGlHelper.setActiveTexture(OpenGlHelper.lightmapTexUnit);
+        GL11.glDisable(GL11.GL_TEXTURE_2D);
+        OpenGlHelper.setActiveTexture(OpenGlHelper.defaultTexUnit);
+        GL11.glEnable(GL11.GL_TEXTURE_2D);
+        GL11.glEnable(GL11.GL_DEPTH_TEST);
+        GL11.glDepthMask(true);
+        GL11.glClear(GL11.GL_DEPTH_BUFFER_BIT);
+        GL11.glEnable(GL11.GL_COLOR_MATERIAL);
+        GL11.glEnable(GL12.GL_RESCALE_NORMAL);
+        GL11.glColor4f(1.0F, 1.0F, 1.0F, 1.0F);
+        GL11.glPushMatrix();
+        GL11.glTranslatef(x, y, 50.0F);
+        GL11.glScalef(-scale, scale, scale);
+        GL11.glRotatef(180.0F, 0.0F, 0.0F, 1.0F);
+        GL11.glRotatef(135.0F, 0.0F, 1.0F, 0.0F);
+        RenderHelper.enableStandardItemLighting();
+        GL11.glRotatef(-135.0F, 0.0F, 1.0F, 0.0F);
+        GL11.glRotatef(-(float) Math.atan(pitchInput / 40.0F) * 20.0F, 1.0F, 0.0F, 0.0F);
+        float previewBodyYaw = (float) Math.atan(yawInput / 40.0F) * 20.0F;
+        float previewRotationYaw = (float) Math.atan(yawInput / 40.0F) * 40.0F;
+        float previewRotationPitch = -((float) Math.atan(pitchInput / 40.0F)) * 20.0F;
+
+        if (entity instanceof EntityDragon) {
+            previewBodyYaw += 180.0F;
+            previewRotationYaw += 180.0F;
+        }
+
+        entity.renderYawOffset = previewBodyYaw;
+        entity.rotationYaw = previewRotationYaw;
+        entity.rotationPitch = previewRotationPitch;
+        entity.rotationYawHead = previewRotationYaw;
+        entity.prevRotationYawHead = previewRotationYaw;
+
+        if (entity instanceof EntityDragon dragon) {
+            oldDragonRingBufferIndex = dragon.ringBufferIndex;
+            oldDragonRingBuffer = new double[dragon.ringBuffer.length][3];
+            for (int i = 0; i < dragon.ringBuffer.length; i++) {
+                System.arraycopy(dragon.ringBuffer[i], 0, oldDragonRingBuffer[i], 0, dragon.ringBuffer[i].length);
+            }
+            dragon.ringBufferIndex = 0;
+            for (int i = 0; i < dragon.ringBuffer.length; i++) {
+                dragon.ringBuffer[i][0] = previewRotationYaw;
+                dragon.ringBuffer[i][1] = entity.posY;
+                dragon.ringBuffer[i][2] = 0.0D;
+            }
+        }
+
+        GL11.glTranslatef(0.0F, entity.yOffset, 0.0F);
+        RenderManager.instance.playerViewY = 180.0F;
+        RenderManager.instance.renderEntityWithPosYaw(entity, 0.0D, 0.0D, 0.0D, 0.0F, 1.0F);
+        entity.renderYawOffset = oldRenderYawOffset;
+        entity.rotationYaw = oldRotationYaw;
+        entity.rotationPitch = oldRotationPitch;
+        entity.prevRotationYawHead = oldPrevRotationYawHead;
+        entity.rotationYawHead = oldRotationYawHead;
+        entity.posY = oldPosY;
+
+        if (entity instanceof EntityDragon dragon && oldDragonRingBuffer != null) {
+            dragon.ringBufferIndex = oldDragonRingBufferIndex;
+            for (int i = 0; i < dragon.ringBuffer.length; i++) {
+                System.arraycopy(oldDragonRingBuffer[i], 0, dragon.ringBuffer[i], 0, dragon.ringBuffer[i].length);
+            }
+        }
+
+        renderManager.worldObj = oldWorld;
+        renderManager.renderEngine = oldRenderEngine;
+        renderManager.options = oldOptions;
+        renderManager.livingPlayer = oldLivingPlayer;
+        renderManager.field_147941_i = oldViewEntity;
+        renderManager.viewerPosX = oldViewerPosX;
+        renderManager.viewerPosY = oldViewerPosY;
+        renderManager.viewerPosZ = oldViewerPosZ;
+        renderManager.playerViewX = oldPlayerViewX;
+        renderManager.playerViewY = oldPlayerViewY;
+        GL11.glPopMatrix();
+        RenderHelper.disableStandardItemLighting();
+        GL11.glDisable(GL12.GL_RESCALE_NORMAL);
+        OpenGlHelper.setActiveTexture(OpenGlHelper.lightmapTexUnit);
+        GL11.glDisable(GL11.GL_TEXTURE_2D);
+        OpenGlHelper.setActiveTexture(OpenGlHelper.defaultTexUnit);
+        GL11.glDisable(GL11.GL_COLOR_MATERIAL);
+    }
+}

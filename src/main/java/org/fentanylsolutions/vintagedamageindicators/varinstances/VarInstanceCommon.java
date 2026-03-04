@@ -1,6 +1,10 @@
 package org.fentanylsolutions.vintagedamageindicators.varinstances;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 
 import org.fentanylsolutions.vintagedamageindicators.Config;
 import org.fentanylsolutions.vintagedamageindicators.MobTypes;
@@ -11,18 +15,20 @@ public class VarInstanceCommon {
 
     public XSTR rand = new XSTR();
 
-    public HashMap<Class, EntityOverride> entityOverrides;
+    public HashMap<Class<?>, EntityOverride> entityOverrides;
+    public LinkedHashMap<String, EntityOverride> entityOverridesByClassName;
+    public ArrayList<String> preservedEntityOverrideEntries;
 
     public void postInitHook() {
         buildOverrideList();
     }
 
     public void buildOverrideList() {
-        if (entityOverrides == null) {
-            entityOverrides = new HashMap<>();
-        } else {
-            entityOverrides.clear();
-        }
+        ensureOverrideState();
+        entityOverrides.clear();
+        entityOverridesByClassName.clear();
+        preservedEntityOverrideEntries.clear();
+
         for (String s : Config.entityOverrides) {
             if (s == null || s.trim()
                 .isEmpty()) {
@@ -30,16 +36,120 @@ public class VarInstanceCommon {
             }
             try {
                 EntityOverride eo = EntityOverride.deserialize(s);
-                if (!eo.enable || eo.className == null || eo.className.isEmpty()) {
+                if (eo.className == null || eo.className.isEmpty()) {
+                    preservedEntityOverrideEntries.add(s);
                     continue;
                 }
-                Class cls = Class.forName(eo.className);
+
+                entityOverridesByClassName.put(eo.className, eo);
+
+                if (!eo.enable) {
+                    continue;
+                }
+                Class<?> cls = Class.forName(eo.className);
                 entityOverrides.put(cls, eo);
             } catch (ClassNotFoundException e) {
                 VintageDamageIndicators.debug("Skipping unknown override class: " + s);
+                preservedEntityOverrideEntries.add(s);
             } catch (RuntimeException e) {
                 VintageDamageIndicators.debug("Skipping malformed entity override: " + s);
+                preservedEntityOverrideEntries.add(s);
             }
+        }
+    }
+
+    public EntityOverride getEntityOverride(Class<?> entityClass) {
+        if (entityOverrides == null || entityClass == null) {
+            return null;
+        }
+        return entityOverrides.get(entityClass);
+    }
+
+    public EntityOverride getEntityOverride(String className) {
+        if (entityOverridesByClassName == null || className == null) {
+            return null;
+        }
+        return entityOverridesByClassName.get(className);
+    }
+
+    public LinkedHashMap<String, EntityOverride> copyEntityOverridesByClassName() {
+        LinkedHashMap<String, EntityOverride> copy = new LinkedHashMap<>();
+        if (entityOverridesByClassName == null) {
+            return copy;
+        }
+        for (Map.Entry<String, EntityOverride> entry : entityOverridesByClassName.entrySet()) {
+            copy.put(
+                entry.getKey(),
+                entry.getValue()
+                    .copy());
+        }
+        return copy;
+    }
+
+    public ArrayList<String> copyPreservedEntityOverrideEntries() {
+        if (preservedEntityOverrideEntries == null) {
+            return new ArrayList<>();
+        }
+        return new ArrayList<>(preservedEntityOverrideEntries);
+    }
+
+    public void replaceEntityOverrides(Map<String, EntityOverride> overridesByClassName,
+        List<String> preservedEntries) {
+        ensureOverrideState();
+        entityOverrides.clear();
+        entityOverridesByClassName.clear();
+        preservedEntityOverrideEntries.clear();
+
+        ArrayList<String> serialized = new ArrayList<>();
+
+        if (overridesByClassName != null) {
+            for (Map.Entry<String, EntityOverride> entry : overridesByClassName.entrySet()) {
+                EntityOverride override = entry.getValue();
+                if (override == null) {
+                    continue;
+                }
+                EntityOverride stored = override.copy();
+                if (stored.className == null || stored.className.isEmpty()) {
+                    stored.className = entry.getKey();
+                }
+                if (stored.className == null || stored.className.isEmpty()) {
+                    continue;
+                }
+
+                entityOverridesByClassName.put(stored.className, stored);
+                serialized.add(stored.serialize());
+
+                if (!stored.enable) {
+                    continue;
+                }
+
+                try {
+                    Class<?> cls = Class.forName(stored.className);
+                    entityOverrides.put(cls, stored);
+                } catch (ClassNotFoundException e) {
+                    preservedEntityOverrideEntries.add(stored.serialize());
+                    VintageDamageIndicators.debug("Skipping unknown override class while saving: " + stored.className);
+                }
+            }
+        }
+
+        if (preservedEntries != null) {
+            preservedEntityOverrideEntries.addAll(preservedEntries);
+            serialized.addAll(preservedEntries);
+        }
+
+        Config.setEntityOverrides(serialized.toArray(new String[0]));
+    }
+
+    private void ensureOverrideState() {
+        if (entityOverrides == null) {
+            entityOverrides = new HashMap<>();
+        }
+        if (entityOverridesByClassName == null) {
+            entityOverridesByClassName = new LinkedHashMap<>();
+        }
+        if (preservedEntityOverrideEntries == null) {
+            preservedEntityOverrideEntries = new ArrayList<>();
         }
     }
 
@@ -49,10 +159,15 @@ public class VarInstanceCommon {
         public String displayName;
         public boolean appendBabyName;
         public float babyScaleModifier;
+        public float babyScaleFactor;
         public float scaleFactor;
         public float sizeModifier;
         public float xOffset;
         public float yOffset;
+        public float babyXOffset;
+        public float babyYOffset;
+        public float yawOffset;
+        public float pitchOffset;
         public MobTypes type;
         public boolean enable;
 
@@ -62,30 +177,61 @@ public class VarInstanceCommon {
         }
 
         public EntityOverride(String className, String displayName, boolean appendBabyName, float babyScaleModifier,
-            float scaleFactor, float sizeModifier, float xOffset, float yOffset, MobTypes type, boolean enable) {
+            float babyScaleFactor, float scaleFactor, float sizeModifier, float xOffset, float yOffset,
+            float babyXOffset, float babyYOffset, float yawOffset, float pitchOffset, MobTypes type, boolean enable) {
             this.className = className;
             this.displayName = displayName;
             this.appendBabyName = appendBabyName;
             this.babyScaleModifier = babyScaleModifier;
+            this.babyScaleFactor = babyScaleFactor;
             this.scaleFactor = scaleFactor;
             this.sizeModifier = sizeModifier;
             this.xOffset = xOffset;
             this.yOffset = yOffset;
+            this.babyXOffset = babyXOffset;
+            this.babyYOffset = babyYOffset;
+            this.yawOffset = yawOffset;
+            this.pitchOffset = pitchOffset;
             this.type = type;
             this.enable = enable;
         }
 
+        public EntityOverride copy() {
+            EntityOverride copy = new EntityOverride();
+            copy.className = className;
+            copy.displayName = displayName;
+            copy.appendBabyName = appendBabyName;
+            copy.babyScaleModifier = babyScaleModifier;
+            copy.babyScaleFactor = babyScaleFactor;
+            copy.scaleFactor = scaleFactor;
+            copy.sizeModifier = sizeModifier;
+            copy.xOffset = xOffset;
+            copy.yOffset = yOffset;
+            copy.babyXOffset = babyXOffset;
+            copy.babyYOffset = babyYOffset;
+            copy.yawOffset = yawOffset;
+            copy.pitchOffset = pitchOffset;
+            copy.type = type;
+            copy.enable = enable;
+            return copy;
+        }
+
         public String serialize() {
             return String.format(
-                "[%s]: <Name>: %s, <Append Baby Name>: %b, <Baby Scale Modifier>: %f, <Scale Factor>: %f, <Size Modifier>: %f, <X Offset>: %f, <Y Offset>: %f, <Type>: %s, <Enable>: %b",
+                "[%s]: <Name>: %s, <Append Baby Name>: %b, <Baby Scale Modifier>: %f, <Baby Scale Factor>: %f, <Scale Factor>: %f, <Size Modifier>: %f, <X Offset>: %f, <Y Offset>: %f, <Baby X Offset>: %f, <Baby Y Offset>: %f, <Yaw Offset>: %f, <Pitch Offset>: %f, <Type>: %s, <Enable>: %b",
                 className,
-                displayName,
+                displayName == null ? "" : displayName,
                 appendBabyName,
                 babyScaleModifier,
+                babyScaleFactor,
                 scaleFactor,
                 sizeModifier,
                 xOffset,
                 yOffset,
+                babyXOffset,
+                babyYOffset,
+                yawOffset,
+                pitchOffset,
                 type.toString(),
                 enable);
         }
@@ -125,6 +271,10 @@ public class VarInstanceCommon {
                     entity.babyScaleModifier = Float.parseFloat(
                         part.substring("<Baby Scale Modifier>:".length())
                             .trim());
+                } else if (part.startsWith("<Baby Scale Factor>:")) {
+                    entity.babyScaleFactor = Float.parseFloat(
+                        part.substring("<Baby Scale Factor>:".length())
+                            .trim());
                 } else if (part.startsWith("<Scale Factor>:")) {
                     entity.scaleFactor = Float.parseFloat(
                         part.substring("<Scale Factor>:".length())
@@ -140,6 +290,22 @@ public class VarInstanceCommon {
                 } else if (part.startsWith("<Y Offset>:")) {
                     entity.yOffset = Float.parseFloat(
                         part.substring("<Y Offset>:".length())
+                            .trim());
+                } else if (part.startsWith("<Baby X Offset>:")) {
+                    entity.babyXOffset = Float.parseFloat(
+                        part.substring("<Baby X Offset>:".length())
+                            .trim());
+                } else if (part.startsWith("<Baby Y Offset>:")) {
+                    entity.babyYOffset = Float.parseFloat(
+                        part.substring("<Baby Y Offset>:".length())
+                            .trim());
+                } else if (part.startsWith("<Yaw Offset>:")) {
+                    entity.yawOffset = Float.parseFloat(
+                        part.substring("<Yaw Offset>:".length())
+                            .trim());
+                } else if (part.startsWith("<Pitch Offset>:")) {
+                    entity.pitchOffset = Float.parseFloat(
+                        part.substring("<Pitch Offset>:".length())
                             .trim());
                 } else if (part.startsWith("<Type>:")) {
                     String mobType = part.substring("<Type>:".length())

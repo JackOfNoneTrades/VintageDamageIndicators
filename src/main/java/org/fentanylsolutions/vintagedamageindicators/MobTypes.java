@@ -43,10 +43,9 @@ public enum MobTypes {
     }
 
     public static MobTypes getTypeFor(EntityLivingBase entity) {
-        if (VintageDamageIndicators.varInstanceCommon != null
-            && VintageDamageIndicators.varInstanceCommon.entityOverrides != null) {
-            VarInstanceCommon.EntityOverride eo = VintageDamageIndicators.varInstanceCommon.entityOverrides
-                .get(entity.getClass());
+        if (VintageDamageIndicators.varInstanceCommon != null) {
+            VarInstanceCommon.EntityOverride eo = VintageDamageIndicators.varInstanceCommon
+                .getEntityOverride(entity.getClass());
             if (eo != null) {
                 return eo.type;
             }
