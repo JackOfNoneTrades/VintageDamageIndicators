@@ -9,6 +9,10 @@ public final class HudPreviewMath {
 
     public static final int PANEL_WIDTH = 208;
     public static final int PANEL_HEIGHT = 78;
+    public static final int PREVIEW_CLIP_X = 4;
+    public static final int PREVIEW_CLIP_Y = 4;
+    public static final int PREVIEW_CLIP_WIDTH = 70;
+    public static final int PREVIEW_CLIP_HEIGHT = 58;
     public static final int ENTITY_X = 45;
     public static final int ENTITY_Y = 58;
     public static final int ICON_X = 5;

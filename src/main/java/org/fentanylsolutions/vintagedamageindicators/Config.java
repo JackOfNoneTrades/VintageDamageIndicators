@@ -43,6 +43,7 @@ public class Config {
     public static float hudEntitySize = 38.0f;
     public static float hudEntityYaw = 35.0f;
     public static float hudEntityPitch = -12.0f;
+    public static boolean hudPreviewParticlesEnabled = true;
     public static boolean hudPotionEffectsEnabled = true;
     public static boolean hudPotionEffectTime = true;
     public static boolean hudIndicatorAlignLeft = true;
@@ -261,6 +262,11 @@ public class Config {
                 -90,
                 90,
                 "The global pitch angle used for entity previews.");
+            hudPreviewParticlesEnabled = config.getBoolean(
+                "hudPreviewParticlesEnabled",
+                Categories.hudIndicator,
+                hudPreviewParticlesEnabled,
+                "Whether damage popoffs are shown inside the HUD entity preview.");
             hudPotionEffectsEnabled = config.getBoolean(
                 "hudPotionEffectsEnabled",
                 Categories.hudIndicator,

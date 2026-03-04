@@ -29,6 +29,7 @@ import org.fentanylsolutions.vintagedamageindicators.VintageDamageIndicators;
 import org.fentanylsolutions.vintagedamageindicators.client.HudEntityRenderer;
 import org.fentanylsolutions.vintagedamageindicators.client.HudIndicatorState;
 import org.fentanylsolutions.vintagedamageindicators.client.HudPreviewMath;
+import org.fentanylsolutions.vintagedamageindicators.client.HudPreviewParticles;
 import org.fentanylsolutions.vintagedamageindicators.varinstances.VarInstanceCommon;
 import org.lwjgl.opengl.GL11;
 
@@ -126,6 +127,7 @@ public class HudEventHandler extends Gui {
         }
 
         Minecraft minecraft = Minecraft.getMinecraft();
+        HudPreviewParticles.tick();
         if (minecraft.thePlayer == null || VintageDamageIndicators.varInstanceClient == null) {
             return;
         }
@@ -246,6 +248,14 @@ public class HudEventHandler extends Gui {
 
         drawBackground(minecraft);
         drawEntityPreview(target, mobType);
+        HudPreviewParticles.render(
+            target,
+            minecraft.fontRenderer,
+            x,
+            y,
+            scale,
+            resolution.getScaledHeight(),
+            resolution.getScaleFactor());
         drawFrame(minecraft);
         drawMobTypeIcon(minecraft, mobType);
         drawHealthBar(minecraft, target);

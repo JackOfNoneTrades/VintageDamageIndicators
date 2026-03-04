@@ -15,6 +15,7 @@ import net.minecraft.util.MathHelper;
 import net.minecraftforge.event.entity.living.LivingEvent;
 
 import org.fentanylsolutions.vintagedamageindicators.Config;
+import org.fentanylsolutions.vintagedamageindicators.client.HudPreviewParticles;
 import org.fentanylsolutions.vintagedamageindicators.rendering.DamageIndicatorParticle;
 
 import cpw.mods.fml.common.FMLCommonHandler;
@@ -35,24 +36,29 @@ public class ParticleEventHandler {
                     .intValue()) != 0
                 && lastHealth != currentHealth) {
                 int damage = lastHealth - currentHealth;
-                DamageIndicatorParticle customParticle = new DamageIndicatorParticle(
-                    Minecraft.getMinecraft().theWorld,
-                    el.posX,
-                    el.posY + el.height,
-                    el.posZ,
-                    0.001d,
-                    0.05f * Config.bounceStrength,
-                    0.001d,
-                    damage);
-                if (Minecraft.getMinecraft().thePlayer.canEntityBeSeen(el)) {
-                    customParticle.renderOnTop = true;
-                } else if (Minecraft.getMinecraft()
-                    .isSingleplayer()) {
-                        customParticle.renderOnTop = Config.alwaysRender;
+                if (Config.hudPreviewParticlesEnabled) {
+                    HudPreviewParticles.spawnDamage(el, damage);
+                }
+                if (Config.damageParticlesEnabled) {
+                    DamageIndicatorParticle customParticle = new DamageIndicatorParticle(
+                        Minecraft.getMinecraft().theWorld,
+                        el.posX,
+                        el.posY + el.height,
+                        el.posZ,
+                        0.001d,
+                        0.05f * Config.bounceStrength,
+                        0.001d,
+                        damage);
+                    if (Minecraft.getMinecraft().thePlayer.canEntityBeSeen(el)) {
+                        customParticle.renderOnTop = true;
+                    } else if (Minecraft.getMinecraft()
+                        .isSingleplayer()) {
+                            customParticle.renderOnTop = Config.alwaysRender;
+                        }
+                    if (el != Minecraft.getMinecraft().thePlayer
+                        || Minecraft.getMinecraft().gameSettings.thirdPersonView != 0) {
+                        Minecraft.getMinecraft().effectRenderer.addEffect(customParticle);
                     }
-                if (el != Minecraft.getMinecraft().thePlayer
-                    || Minecraft.getMinecraft().gameSettings.thirdPersonView != 0) {
-                    Minecraft.getMinecraft().effectRenderer.addEffect(customParticle);
                 }
             }
             healths.put(Integer.valueOf(el.getEntityId()), Integer.valueOf(currentHealth));
@@ -60,6 +66,13 @@ public class ParticleEventHandler {
     }
 
     public static void doCritical(Entity target) {
+        if (Config.hudPreviewParticlesEnabled && Config.criticalParticlesEnabled) {
+            HudPreviewParticles.spawnCritical(target);
+        }
+        if (!Config.criticalParticlesEnabled) {
+            return;
+        }
+
         DamageIndicatorParticle customParticle = new DamageIndicatorParticle(
             Minecraft.getMinecraft().theWorld,
             target.posX,
@@ -98,10 +111,11 @@ public class ParticleEventHandler {
                 entityLiving = Minecraft.getMinecraft().thePlayer;
             }
             if (entityLivingBase != null && entityLivingBase.worldObj != null) {
-                if (Config.damageParticlesEnabled) {
+                if (Config.damageParticlesEnabled || Config.hudPreviewParticlesEnabled) {
                     updateHealth(entityLiving);
                 }
                 if (event.entityLiving.isDead) {
+                    HudPreviewParticles.clear(event.entity.getEntityId());
                     potionEffects.remove(Integer.valueOf(event.entity.getEntityId()));
                     healths.remove(Integer.valueOf(event.entity.getEntityId()));
                     enemies.remove(Integer.valueOf(event.entity.getEntityId()));
@@ -113,6 +127,7 @@ public class ParticleEventHandler {
                 .getSide()
                 .isClient()) {
                 if (event.entityLiving.isDead) {
+                    HudPreviewParticles.clear(event.entity.getEntityId());
                     potionEffects.remove(Integer.valueOf(event.entity.getEntityId()));
                     healths.remove(Integer.valueOf(event.entity.getEntityId()));
                     enemies.remove(Integer.valueOf(event.entity.getEntityId()));
