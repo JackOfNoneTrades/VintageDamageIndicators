@@ -261,7 +261,8 @@ public class HudEventHandler extends Gui {
     private PreviewSettings getPreviewSettings(EntityLivingBase target) {
         VarInstanceCommon.EntityOverride override = getEntityOverride(target);
         PreviewTuning builtIn = getBuiltInPreviewTuning(target);
-        float scale = getAutoScale(target) * builtIn.scaleMultiplier;
+        float autoScale = getAutoScale(target);
+        float scale = autoScale * builtIn.scaleMultiplier;
 
         if (override != null) {
             if (override.scaleFactor > 0.0F) {
@@ -282,6 +283,8 @@ public class HudEventHandler extends Gui {
             x += Math.round(override.xOffset);
             y += Math.round(override.yOffset);
         }
+
+        logPreviewSettings(target, override, builtIn, autoScale, scale, x, y);
 
         return new PreviewSettings(x, y, Math.max(1, Math.round(scale)));
     }
@@ -419,6 +422,55 @@ public class HudEventHandler extends Gui {
             return text.substring(0, text.length() - 2);
         }
         return text;
+    }
+
+    private void logPreviewSettings(EntityLivingBase target, VarInstanceCommon.EntityOverride override,
+        PreviewTuning builtIn, float autoScale, float finalScale, int finalX, int finalY) {
+        if (!VintageDamageIndicators.DEBUG_MODE && !Config.debugMode) {
+            return;
+        }
+        if (target.ticksExisted % 20 != 0) {
+            return;
+        }
+
+        String overrideSummary = "none";
+        if (override != null) {
+            overrideSummary = "scale=" + override.scaleFactor
+                + ", size="
+                + override.sizeModifier
+                + ", baby="
+                + override.babyScaleModifier
+                + ", x="
+                + override.xOffset
+                + ", y="
+                + override.yOffset;
+        }
+
+        VintageDamageIndicators.debug(
+            "Preview " + target.getClass()
+                .getName()
+                + " bbox="
+                + target.width
+                + "x"
+                + target.height
+                + " eye="
+                + target.getEyeHeight()
+                + " autoScale="
+                + autoScale
+                + " builtIn="
+                + builtIn.scaleMultiplier
+                + "/"
+                + builtIn.xOffset
+                + "/"
+                + builtIn.yOffset
+                + " finalScale="
+                + finalScale
+                + " finalPos="
+                + finalX
+                + ","
+                + finalY
+                + " override="
+                + overrideSummary);
     }
 
     private static class PreviewSettings {

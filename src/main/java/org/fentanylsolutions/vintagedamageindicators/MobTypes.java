@@ -3,13 +3,13 @@ package org.fentanylsolutions.vintagedamageindicators;
 import java.util.Locale;
 
 import net.minecraft.entity.EntityLivingBase;
+import net.minecraft.entity.EnumCreatureAttribute;
 import net.minecraft.entity.boss.IBossDisplayData;
 import net.minecraft.entity.monster.EntityGolem;
-import net.minecraft.entity.monster.EntitySkeleton;
-import net.minecraft.entity.monster.EntitySpider;
 import net.minecraft.entity.monster.EntityWitch;
-import net.minecraft.entity.monster.EntityZombie;
 import net.minecraft.entity.monster.IMob;
+import net.minecraft.entity.passive.EntityAmbientCreature;
+import net.minecraft.entity.passive.EntityAnimal;
 import net.minecraft.entity.passive.EntityVillager;
 import net.minecraft.entity.passive.EntityWaterMob;
 import net.minecraft.entity.player.EntityPlayer;
@@ -55,25 +55,58 @@ public enum MobTypes {
 
         if (entity instanceof EntityPlayer) {
             return PLAYER;
-        } else if (entity instanceof IBossDisplayData) {
+        }
+        if (entity instanceof IBossDisplayData) {
             return BOSS;
-        } else if (entity instanceof EntityWaterMob) {
-            return WATER_ANIMAL;
-        } else if (entity instanceof EntityVillager) {
-            return VILLAGER;
-        } else if (entity instanceof EntityGolem) {
+        }
+        if (isIllagerLike(entity)) {
+            return ILLAGER;
+        }
+        if (entity instanceof EntityGolem) {
             return GOLEM;
-        } else if (entity instanceof EntitySpider) {
-            return ARTHROPOD_MONSTER;
-        } else if (entity instanceof EntityZombie || entity instanceof EntitySkeleton) {
-            return UNDEAD;
-        } else if (entity instanceof EntityWitch) {
-            return VILLAGER; // TODO: maybe find a better type
-        } else if (entity instanceof IMob) {
+        }
+        if (entity instanceof EntityVillager || entity instanceof EntityWitch) {
+            return VILLAGER;
+        }
+
+        boolean hostile = entity instanceof IMob;
+        boolean water = entity instanceof EntityWaterMob;
+        EnumCreatureAttribute creatureAttribute = entity.getCreatureAttribute();
+
+        if (creatureAttribute == EnumCreatureAttribute.UNDEAD) {
+            return hostile ? UNDEAD : UNDEAD_ANIMAL;
+        }
+        if (creatureAttribute == EnumCreatureAttribute.ARTHROPOD) {
+            if (water) {
+                return WATER_ARTHROPOD;
+            }
+            return hostile ? ARTHROPOD_MONSTER : ARTHROPOD;
+        }
+        if (water) {
+            return hostile ? WATER_MONSTER : WATER_ANIMAL;
+        }
+        if (hostile) {
             return MONSTER;
+        }
+        if (entity instanceof EntityAmbientCreature) {
+            return AMBIENT;
+        }
+        if (entity instanceof EntityAnimal) {
+            return ANIMAL;
         }
 
         return UNKNOWN;
+    }
+
+    private static boolean isIllagerLike(EntityLivingBase entity) {
+        String className = entity.getClass()
+            .getName()
+            .toLowerCase(Locale.ROOT);
+        return className.contains("illager") || className.contains("pillager")
+            || className.contains("evoker")
+            || className.contains("vindicator")
+            || className.contains("illusioner")
+            || className.contains("ravager");
     }
 
     public ResourceLocation getTexture() {
