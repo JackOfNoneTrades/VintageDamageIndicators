@@ -168,6 +168,7 @@ public class VarInstanceCommon {
         public float babyYOffset;
         public float yawOffset;
         public float pitchOffset;
+        public float rollOffset;
         public MobTypes type;
         public boolean enable;
 
@@ -178,7 +179,8 @@ public class VarInstanceCommon {
 
         public EntityOverride(String className, String displayName, boolean appendBabyName, float babyScaleModifier,
             float babyScaleFactor, float scaleFactor, float sizeModifier, float xOffset, float yOffset,
-            float babyXOffset, float babyYOffset, float yawOffset, float pitchOffset, MobTypes type, boolean enable) {
+            float babyXOffset, float babyYOffset, float yawOffset, float pitchOffset, float rollOffset, MobTypes type,
+            boolean enable) {
             this.className = className;
             this.displayName = displayName;
             this.appendBabyName = appendBabyName;
@@ -192,6 +194,7 @@ public class VarInstanceCommon {
             this.babyYOffset = babyYOffset;
             this.yawOffset = yawOffset;
             this.pitchOffset = pitchOffset;
+            this.rollOffset = rollOffset;
             this.type = type;
             this.enable = enable;
         }
@@ -211,6 +214,7 @@ public class VarInstanceCommon {
             copy.babyYOffset = babyYOffset;
             copy.yawOffset = yawOffset;
             copy.pitchOffset = pitchOffset;
+            copy.rollOffset = rollOffset;
             copy.type = type;
             copy.enable = enable;
             return copy;
@@ -218,7 +222,7 @@ public class VarInstanceCommon {
 
         public String serialize() {
             return String.format(
-                "[%s]: <Name>: %s, <Append Baby Name>: %b, <Baby Scale Modifier>: %f, <Baby Scale Factor>: %f, <Scale Factor>: %f, <Size Modifier>: %f, <X Offset>: %f, <Y Offset>: %f, <Baby X Offset>: %f, <Baby Y Offset>: %f, <Yaw Offset>: %f, <Pitch Offset>: %f, <Type>: %s, <Enable>: %b",
+                "[%s]: <Name>: %s, <Append Baby Name>: %b, <Baby Scale Modifier>: %f, <Baby Scale Factor>: %f, <Scale Factor>: %f, <Size Modifier>: %f, <X Offset>: %f, <Y Offset>: %f, <Baby X Offset>: %f, <Baby Y Offset>: %f, <Yaw Offset>: %f, <Pitch Offset>: %f, <Roll Offset>: %f, <Type>: %s, <Enable>: %b",
                 className,
                 displayName == null ? "" : displayName,
                 appendBabyName,
@@ -232,6 +236,7 @@ public class VarInstanceCommon {
                 babyYOffset,
                 yawOffset,
                 pitchOffset,
+                rollOffset,
                 type.toString(),
                 enable);
         }
@@ -306,6 +311,10 @@ public class VarInstanceCommon {
                 } else if (part.startsWith("<Pitch Offset>:")) {
                     entity.pitchOffset = Float.parseFloat(
                         part.substring("<Pitch Offset>:".length())
+                            .trim());
+                } else if (part.startsWith("<Roll Offset>:")) {
+                    entity.rollOffset = Float.parseFloat(
+                        part.substring("<Roll Offset>:".length())
                             .trim());
                 } else if (part.startsWith("<Type>:")) {
                     String mobType = part.substring("<Type>:".length())

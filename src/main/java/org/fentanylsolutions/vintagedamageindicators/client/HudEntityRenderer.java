@@ -18,7 +18,7 @@ public final class HudEntityRenderer {
 
     private HudEntityRenderer() {}
 
-    public static void drawEntity(int x, int y, float scale, float yawInput, float pitchInput,
+    public static void drawEntity(int x, int y, float scale, float yawInput, float pitchInput, float rollInput,
         EntityLivingBase entity) {
         if (entity == null) {
             return;
@@ -74,6 +74,7 @@ public final class HudEntityRenderer {
         GL11.glRotatef(135.0F, 0.0F, 1.0F, 0.0F);
         RenderHelper.enableStandardItemLighting();
         GL11.glRotatef(-135.0F, 0.0F, 1.0F, 0.0F);
+        GL11.glRotatef(rollInput, 0.0F, 0.0F, 1.0F);
         GL11.glRotatef(-(float) Math.atan(pitchInput / 40.0F) * 20.0F, 1.0F, 0.0F, 0.0F);
         float previewBodyYaw = (float) Math.atan(yawInput / 40.0F) * 20.0F;
         float previewRotationYaw = (float) Math.atan(yawInput / 40.0F) * 40.0F;

@@ -51,6 +51,7 @@ public final class HudPreviewMath {
         float scale = autoScale * builtIn.scaleMultiplier;
         float yaw = baseYaw;
         float pitch = basePitch;
+        float roll = 0.0F;
 
         if (!child) {
             float adultScaleMultiplier = DEFAULT_ADULT_SCALE_MULTIPLIER;
@@ -94,11 +95,12 @@ public final class HudPreviewMath {
             }
             yaw += override.yawOffset;
             pitch += override.pitchOffset;
+            roll += override.rollOffset;
         } else if (vanillaChild) {
             y += DEFAULT_CHILD_Y_OFFSET;
         }
 
-        return new PreviewSettings(x, y, Math.max(0.1F, scale), yaw, pitch, autoScale, scale, builtIn);
+        return new PreviewSettings(x, y, Math.max(0.1F, scale), yaw, pitch, roll, autoScale, scale, builtIn);
     }
 
     private static boolean isCustomChild(EntityLivingBase target) {
@@ -155,7 +157,9 @@ public final class HudPreviewMath {
             + ", yaw="
             + override.yawOffset
             + ", pitch="
-            + override.pitchOffset;
+            + override.pitchOffset
+            + ", roll="
+            + override.rollOffset;
     }
 
     public static final class PreviewSettings {
@@ -165,17 +169,19 @@ public final class HudPreviewMath {
         public final float scale;
         public final float yaw;
         public final float pitch;
+        public final float roll;
         public final float autoScale;
         public final float finalScale;
         public final PreviewTuning builtIn;
 
-        public PreviewSettings(int x, int y, float scale, float yaw, float pitch, float autoScale, float finalScale,
-            PreviewTuning builtIn) {
+        public PreviewSettings(int x, int y, float scale, float yaw, float pitch, float roll, float autoScale,
+            float finalScale, PreviewTuning builtIn) {
             this.x = x;
             this.y = y;
             this.scale = scale;
             this.yaw = yaw;
             this.pitch = pitch;
+            this.roll = roll;
             this.autoScale = autoScale;
             this.finalScale = finalScale;
             this.builtIn = builtIn;

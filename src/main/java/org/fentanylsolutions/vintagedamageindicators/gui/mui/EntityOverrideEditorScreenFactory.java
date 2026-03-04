@@ -292,6 +292,7 @@ public final class EntityOverrideEditorScreenFactory {
         list.child(buildTextRow("Baby Fallback Mult", textField(state.babyScaleModifierValue(), true, 0.05D)));
         list.child(buildTextRow("Yaw Offset", textField(state.yawOffsetValue(), true, 1.0D)));
         list.child(buildTextRow("Pitch Offset", textField(state.pitchOffsetValue(), true, 1.0D)));
+        list.child(buildTextRow("Roll Offset", textField(state.rollOffsetValue(), true, 1.0D)));
 
         list.child(buildTextRow("Size Modifier", textField(state.sizeModifierValue(), true, 0.05D)));
         ButtonWidget resetButton = new ButtonWidget();
@@ -560,7 +561,8 @@ public final class EntityOverrideEditorScreenFactory {
         }
 
         private void drawEntityPreview(EntityLivingBase entity, HudPreviewMath.PreviewSettings preview) {
-            HudEntityRenderer.drawEntity(preview.x, preview.y, preview.scale, preview.yaw, preview.pitch, entity);
+            HudEntityRenderer
+                .drawEntity(preview.x, preview.y, preview.scale, preview.yaw, preview.pitch, preview.roll, entity);
         }
 
         private void drawBackground(Minecraft minecraft) {
@@ -1125,6 +1127,12 @@ public final class EntityOverrideEditorScreenFactory {
             return floatValue(
                 () -> getSelectedOverrideOrDefault().pitchOffset,
                 value -> getOrCreateSelectedOverride().pitchOffset = value);
+        }
+
+        private StringValue.Dynamic rollOffsetValue() {
+            return floatValue(
+                () -> getSelectedOverrideOrDefault().rollOffset,
+                value -> getOrCreateSelectedOverride().rollOffset = value);
         }
 
         private StringValue.Dynamic previewYawValue() {

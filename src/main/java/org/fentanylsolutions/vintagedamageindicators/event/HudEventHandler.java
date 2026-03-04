@@ -294,7 +294,8 @@ public class HudEventHandler extends Gui {
         VarInstanceCommon.EntityOverride override = getEntityOverride(target);
         HudPreviewMath.PreviewSettings preview = HudPreviewMath.resolvePreviewSettings(target, override);
         logPreviewSettings(target, mobType, override, preview);
-        HudEntityRenderer.drawEntity(preview.x, preview.y, preview.scale, preview.yaw, preview.pitch, target);
+        HudEntityRenderer
+            .drawEntity(preview.x, preview.y, preview.scale, preview.yaw, preview.pitch, preview.roll, target);
         GL11.glEnable(GL11.GL_TEXTURE_2D);
         GL11.glDisable(GL11.GL_DEPTH_TEST);
         GL11.glDisable(GL11.GL_LIGHTING);
@@ -655,6 +656,8 @@ public class HudEventHandler extends Gui {
                 + preview.yaw
                 + "/"
                 + preview.pitch
+                + "/"
+                + preview.roll
                 + " override="
                 + HudPreviewMath.describeOverride(override));
     }
