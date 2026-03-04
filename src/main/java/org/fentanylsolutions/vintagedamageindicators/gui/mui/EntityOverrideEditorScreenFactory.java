@@ -1,5 +1,6 @@
 package org.fentanylsolutions.vintagedamageindicators.gui.mui;
 
+import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.text.DecimalFormat;
 import java.util.ArrayList;
@@ -29,6 +30,7 @@ import org.fentanylsolutions.vintagedamageindicators.MobTypes;
 import org.fentanylsolutions.vintagedamageindicators.VintageDamageIndicators;
 import org.fentanylsolutions.vintagedamageindicators.client.HudEntityRenderer;
 import org.fentanylsolutions.vintagedamageindicators.client.HudPreviewMath;
+import org.fentanylsolutions.vintagedamageindicators.client.HudPreviewWorld;
 import org.fentanylsolutions.vintagedamageindicators.varinstances.VarInstanceCommon;
 import org.lwjgl.opengl.GL11;
 
@@ -43,7 +45,6 @@ import com.cleanroommc.modularui.screen.UISettings;
 import com.cleanroommc.modularui.screen.viewport.GuiContext;
 import com.cleanroommc.modularui.theme.WidgetTheme;
 import com.cleanroommc.modularui.utils.Alignment;
-import com.cleanroommc.modularui.utils.fakeworld.DummyWorld;
 import com.cleanroommc.modularui.value.IntValue;
 import com.cleanroommc.modularui.value.ObjectValue;
 import com.cleanroommc.modularui.value.StringValue;
@@ -82,6 +83,8 @@ public final class EntityOverrideEditorScreenFactory {
     private static final int PREVIEW_CHILD_WIDTH = 72;
     private static final int TYPE_DROPDOWN_WIDTH = PREVIEW_COLUMN_WIDTH - PREVIEW_CHILD_WIDTH - ROW_CHILD_PADDING;
     private static final int CONTROL_ROW_HEIGHT = 18;
+    private static final int PREVIEW_MAX_CUSTOM_AGE = 100;
+    private static final int PREVIEW_MIN_CUSTOM_AGE = 1;
 
     private EntityOverrideEditorScreenFactory() {}
 
@@ -921,6 +924,7 @@ public final class EntityOverrideEditorScreenFactory {
             }
 
             applyPreviewChildState(this.previewEntity);
+            syncPreviewEntityPosition(this.previewEntity, minecraft);
             return this.previewEntity;
         }
 
@@ -930,16 +934,37 @@ public final class EntityOverrideEditorScreenFactory {
                 world = minecraft.thePlayer.worldObj;
             }
             if (world == null) {
-                world = DummyWorld.INSTANCE;
+                world = HudPreviewWorld.INSTANCE;
             }
 
             Object created = EntityList.createEntityByName(option.registryName, world);
             if (created instanceof EntityLivingBase) {
                 EntityLivingBase entity = (EntityLivingBase) created;
-                entity.setPosition(0.0D, 0.0D, 0.0D);
+                syncPreviewEntityPosition(entity, minecraft);
                 return entity;
             }
             return null;
+        }
+
+        private void syncPreviewEntityPosition(EntityLivingBase entity, Minecraft minecraft) {
+            if (entity == null) {
+                return;
+            }
+
+            if (minecraft.renderViewEntity != null && entity.worldObj == minecraft.renderViewEntity.worldObj) {
+                entity.setPosition(
+                    minecraft.renderViewEntity.posX,
+                    minecraft.renderViewEntity.posY,
+                    minecraft.renderViewEntity.posZ);
+                return;
+            }
+
+            if (minecraft.thePlayer != null && entity.worldObj == minecraft.thePlayer.worldObj) {
+                entity.setPosition(minecraft.thePlayer.posX, minecraft.thePlayer.posY, minecraft.thePlayer.posZ);
+                return;
+            }
+
+            entity.setPosition(0.0D, 0.0D, 0.0D);
         }
 
         private void applyPreviewChildState(EntityLivingBase entity) {
@@ -951,6 +976,33 @@ public final class EntityOverrideEditorScreenFactory {
             } else if (entity instanceof EntityZombie) {
                 ((EntityZombie) entity).setChild(this.previewChild);
             }
+            applyCustomPreviewAgeState(entity, this.previewChild);
+        }
+
+        private void applyCustomPreviewAgeState(EntityLivingBase entity, boolean child) {
+            if (child) {
+                invokeBooleanSetter(entity, "setAdult", false);
+                invokeIntSetter(entity, "setMoCAge", PREVIEW_MIN_CUSTOM_AGE);
+                return;
+            }
+            invokeIntSetter(entity, "setMoCAge", PREVIEW_MAX_CUSTOM_AGE);
+            invokeBooleanSetter(entity, "setAdult", true);
+        }
+
+        private void invokeBooleanSetter(EntityLivingBase entity, String methodName, boolean value) {
+            invokeSetter(entity, methodName, Boolean.TYPE, Boolean.valueOf(value));
+        }
+
+        private void invokeIntSetter(EntityLivingBase entity, String methodName, int value) {
+            invokeSetter(entity, methodName, Integer.TYPE, Integer.valueOf(value));
+        }
+
+        private void invokeSetter(EntityLivingBase entity, String methodName, Class<?> parameterType, Object value) {
+            try {
+                Method method = entity.getClass()
+                    .getMethod(methodName, parameterType);
+                method.invoke(entity, value);
+            } catch (ReflectiveOperationException ignored) {}
         }
 
         private String getPreviewChildLabel() {
