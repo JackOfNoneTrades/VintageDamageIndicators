@@ -30,6 +30,7 @@ public enum MobTypes {
     ARTHROPOD_MONSTER,
     WATER_ARTHROPOD,
     GOLEM,
+    MONSTER_GOLEM,
     VILLAGER,
     ILLAGER,
     UNKNOWN,
@@ -62,6 +63,9 @@ public enum MobTypes {
         }
         if (isIllagerLike(entity)) {
             return ILLAGER;
+        }
+        if (entity instanceof EntityGolem && entity instanceof IMob) {
+            return MONSTER_GOLEM;
         }
         if (entity instanceof EntityGolem) {
             return GOLEM;
