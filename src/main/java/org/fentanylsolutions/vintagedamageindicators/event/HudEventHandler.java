@@ -20,6 +20,7 @@ import net.minecraft.potion.PotionEffect;
 import net.minecraft.util.AxisAlignedBB;
 import net.minecraft.util.MovingObjectPosition;
 import net.minecraft.util.ResourceLocation;
+import net.minecraft.util.StringUtils;
 import net.minecraft.util.Vec3;
 import net.minecraftforge.client.event.RenderGameOverlayEvent;
 
@@ -30,6 +31,8 @@ import org.fentanylsolutions.vintagedamageindicators.client.HudEntityRenderer;
 import org.fentanylsolutions.vintagedamageindicators.client.HudIndicatorState;
 import org.fentanylsolutions.vintagedamageindicators.client.HudPreviewMath;
 import org.fentanylsolutions.vintagedamageindicators.client.HudPreviewParticles;
+import org.fentanylsolutions.vintagedamageindicators.network.ClientPotionEffectsCache;
+import org.fentanylsolutions.vintagedamageindicators.network.EntityPotionEffectsMessage;
 import org.fentanylsolutions.vintagedamageindicators.varinstances.VarInstanceCommon;
 import org.lwjgl.opengl.GL11;
 
@@ -444,26 +447,27 @@ public class HudEventHandler extends Gui {
         int drawX = POTION_PANEL_X + POTION_CONTENT_PADDING_LEFT;
 
         for (int index = 0; index < potionStrip.entries.size(); index++) {
-            PotionEntry entry = potionStrip.entries.get(index);
-            int iconIndex = entry.potion.getStatusIconIndex();
-            GL11.glColor4f(1.0F, 1.0F, 1.0F, 1.0F);
-            GL11.glEnable(GL11.GL_TEXTURE_2D);
-            minecraft.getTextureManager()
-                .bindTexture(INVENTORY_TEXTURE);
-            drawTexturedModalRect(
-                drawX,
-                POTION_PANEL_Y + POTION_ICON_Y,
-                iconIndex % 8 * 18,
-                198 + iconIndex / 8 * 18,
-                POTION_ICON_SIZE,
-                POTION_ICON_SIZE);
+            PotionStripEntry entry = potionStrip.entries.get(index);
+            int textX = drawX;
 
-            if (Config.hudPotionEffectTime) {
-                fontRenderer.drawString(
-                    entry.timeText,
-                    drawX + POTION_ICON_SIZE + POTION_TIME_GAP,
-                    POTION_PANEL_Y + POTION_TIME_Y,
-                    POTION_TIME_COLOR);
+            if (entry.potion != null) {
+                int iconIndex = entry.potion.getStatusIconIndex();
+                GL11.glColor4f(1.0F, 1.0F, 1.0F, 1.0F);
+                GL11.glEnable(GL11.GL_TEXTURE_2D);
+                minecraft.getTextureManager()
+                    .bindTexture(INVENTORY_TEXTURE);
+                drawTexturedModalRect(
+                    drawX,
+                    POTION_PANEL_Y + POTION_ICON_Y,
+                    iconIndex % 8 * 18,
+                    198 + iconIndex / 8 * 18,
+                    POTION_ICON_SIZE,
+                    POTION_ICON_SIZE);
+                textX += POTION_ICON_SIZE + POTION_TIME_GAP;
+            }
+
+            if (!entry.timeText.isEmpty()) {
+                fontRenderer.drawString(entry.timeText, textX, POTION_PANEL_Y + POTION_TIME_Y, POTION_TIME_COLOR);
                 GL11.glColor4f(1.0F, 1.0F, 1.0F, 1.0F);
                 GL11.glEnable(GL11.GL_TEXTURE_2D);
             }
@@ -489,14 +493,67 @@ public class HudEventHandler extends Gui {
             return cached;
         }
 
-        Collection<?> activeEffects = target.getActivePotionEffects();
-        if (activeEffects == null || activeEffects.isEmpty()) {
-            PotionStripData empty = PotionStripData.empty(target.ticksExisted, Config.hudPotionEffectTime);
-            this.potionStripCache.put(target, empty);
-            return empty;
+        List<EntityPotionEffectsMessage.PotionEntry> syncedEffects = ClientPotionEffectsCache.get(target.getEntityId());
+        if (syncedEffects != null) {
+            PotionStripData synced = buildPotionStripFromSynced(syncedEffects, fontRenderer, target.ticksExisted);
+            this.potionStripCache.put(target, synced);
+            return synced;
         }
 
-        List<PotionEntry> entries = new ArrayList<>();
+        Collection<?> activeEffects = target.getActivePotionEffects();
+        PotionStripData fallback = buildPotionStripFromVanilla(activeEffects, fontRenderer, target.ticksExisted);
+        this.potionStripCache.put(target, fallback);
+        return fallback;
+    }
+
+    private PotionStripData buildPotionStripFromSynced(List<EntityPotionEffectsMessage.PotionEntry> syncedEffects,
+        FontRenderer fontRenderer, int tick) {
+        if (syncedEffects.isEmpty()) {
+            return PotionStripData.empty(tick, Config.hudPotionEffectTime);
+        }
+
+        List<PotionStripEntry> entries = new ArrayList<>();
+        for (EntityPotionEffectsMessage.PotionEntry syncedEffect : syncedEffects) {
+            Potion potion = null;
+            if (syncedEffect.hasType() && syncedEffect.potionId >= 0
+                && syncedEffect.potionId < Potion.potionTypes.length) {
+                Potion resolved = Potion.potionTypes[syncedEffect.potionId];
+                if (resolved != null && resolved.hasStatusIcon()) {
+                    potion = resolved;
+                }
+            }
+
+            String timeText = Config.hudPotionEffectTime && syncedEffect.hasDuration()
+                ? formatPotionDuration(syncedEffect.duration)
+                : "";
+            int entryWidth = 0;
+            if (potion != null) {
+                entryWidth += POTION_ICON_SIZE;
+            }
+            if (!timeText.isEmpty()) {
+                if (entryWidth > 0) {
+                    entryWidth += POTION_TIME_GAP;
+                }
+                entryWidth += fontRenderer.getStringWidth(timeText);
+            }
+            if (entryWidth <= 0) {
+                continue;
+            }
+
+            entries.add(
+                new PotionStripEntry(potion, timeText, entryWidth, potion != null ? potion.id : Integer.MAX_VALUE));
+        }
+
+        return buildPotionStripData(entries, tick);
+    }
+
+    private PotionStripData buildPotionStripFromVanilla(Collection<?> activeEffects, FontRenderer fontRenderer,
+        int tick) {
+        if (activeEffects == null || activeEffects.isEmpty()) {
+            return PotionStripData.empty(tick, Config.hudPotionEffectTime);
+        }
+
+        List<PotionStripEntry> entries = new ArrayList<>();
         for (Object effectObject : activeEffects) {
             if (!(effectObject instanceof PotionEffect)) {
                 continue;
@@ -512,21 +569,23 @@ public class HudEventHandler extends Gui {
                 continue;
             }
 
-            String timeText = Config.hudPotionEffectTime ? Potion.getDurationString(effect) : "";
+            String timeText = Config.hudPotionEffectTime ? formatPotionDuration(effect.getDuration()) : "";
             int entryWidth = POTION_ICON_SIZE;
             if (Config.hudPotionEffectTime) {
                 entryWidth += POTION_TIME_GAP + fontRenderer.getStringWidth(timeText);
             }
-            entries.add(new PotionEntry(potion, timeText, entryWidth));
+            entries.add(new PotionStripEntry(potion, timeText, entryWidth, potion.id));
         }
 
+        return buildPotionStripData(entries, tick);
+    }
+
+    private PotionStripData buildPotionStripData(List<PotionStripEntry> entries, int tick) {
         if (entries.isEmpty()) {
-            PotionStripData empty = PotionStripData.empty(target.ticksExisted, Config.hudPotionEffectTime);
-            this.potionStripCache.put(target, empty);
-            return empty;
+            return PotionStripData.empty(tick, Config.hudPotionEffectTime);
         }
 
-        Collections.sort(entries, Comparator.comparingInt(entry -> entry.potion.id));
+        Collections.sort(entries, Comparator.comparingInt(entry -> entry.sortOrder));
 
         int contentWidth = POTION_CONTENT_PADDING_LEFT + POTION_CONTENT_PADDING_RIGHT;
         for (int index = 0; index < entries.size(); index++) {
@@ -540,10 +599,13 @@ public class HudEventHandler extends Gui {
             entries,
             POTION_LEFT_WIDTH + contentWidth + POTION_RIGHT_WIDTH,
             contentWidth,
-            target.ticksExisted,
+            tick,
             Config.hudPotionEffectTime);
-        this.potionStripCache.put(target, built);
         return built;
+    }
+
+    private String formatPotionDuration(int duration) {
+        return StringUtils.ticksToElapsedTime(Math.max(0, duration) / 20);
     }
 
     private String formatHealth(float value) {
@@ -600,19 +662,19 @@ public class HudEventHandler extends Gui {
     private static final class PotionStripData {
 
         private static final PotionStripData EMPTY = new PotionStripData(
-            Collections.<PotionEntry>emptyList(),
+            Collections.<PotionStripEntry>emptyList(),
             0,
             0,
             -1,
             false);
 
-        private final List<PotionEntry> entries;
+        private final List<PotionStripEntry> entries;
         private final int stripWidth;
         private final int contentWidth;
         private final int tick;
         private final boolean showTime;
 
-        private PotionStripData(List<PotionEntry> entries, int stripWidth, int contentWidth, int tick,
+        private PotionStripData(List<PotionStripEntry> entries, int stripWidth, int contentWidth, int tick,
             boolean showTime) {
             this.entries = entries;
             this.stripWidth = stripWidth;
@@ -622,20 +684,22 @@ public class HudEventHandler extends Gui {
         }
 
         private static PotionStripData empty(int tick, boolean showTime) {
-            return new PotionStripData(Collections.<PotionEntry>emptyList(), 0, 0, tick, showTime);
+            return new PotionStripData(Collections.<PotionStripEntry>emptyList(), 0, 0, tick, showTime);
         }
     }
 
-    private static final class PotionEntry {
+    private static final class PotionStripEntry {
 
         private final Potion potion;
         private final String timeText;
         private final int width;
+        private final int sortOrder;
 
-        private PotionEntry(Potion potion, String timeText, int width) {
+        private PotionStripEntry(Potion potion, String timeText, int width, int sortOrder) {
             this.potion = potion;
             this.timeText = timeText;
             this.width = width;
+            this.sortOrder = sortOrder;
         }
     }
 }

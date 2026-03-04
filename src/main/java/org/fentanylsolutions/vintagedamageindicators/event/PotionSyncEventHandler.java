@@ -9,6 +9,7 @@ import java.util.Set;
 import java.util.WeakHashMap;
 
 import net.minecraft.entity.EntityLivingBase;
+import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.network.NetworkManager;
 import net.minecraft.potion.PotionEffect;
@@ -16,6 +17,8 @@ import net.minecraft.world.WorldServer;
 import net.minecraftforge.event.entity.living.LivingEvent;
 import net.minecraftforge.event.entity.player.PlayerEvent;
 
+import org.fentanylsolutions.vintagedamageindicators.Config;
+import org.fentanylsolutions.vintagedamageindicators.network.ClientPotionEffectsCache;
 import org.fentanylsolutions.vintagedamageindicators.network.EntityPotionEffectsMessage;
 import org.fentanylsolutions.vintagedamageindicators.network.EntityPotionEffectsMessage.PotionEntry;
 import org.fentanylsolutions.vintagedamageindicators.network.VDINetwork;
@@ -26,7 +29,8 @@ import cpw.mods.fml.relauncher.Side;
 
 public class PotionSyncEventHandler {
 
-    private final WeakHashMap<EntityLivingBase, Integer> potionStateHashes = new WeakHashMap<>();
+    private final WeakHashMap<EntityLivingBase, Integer> potionIdentityHashes = new WeakHashMap<>();
+    private final WeakHashMap<EntityLivingBase, Integer> potionDurationHashes = new WeakHashMap<>();
     private final Map<NetworkManager, Boolean> clientsWithChannel = Collections.synchronizedMap(new WeakHashMap<>());
 
     @SubscribeEvent
@@ -38,14 +42,20 @@ public class PotionSyncEventHandler {
             return;
         }
 
-        int stateHash = computeStateHash(entity.getActivePotionEffects());
-        Integer previousHash = this.potionStateHashes.get(entity);
-        if (previousHash != null && previousHash.intValue() == stateHash) {
+        Collection<PotionEffect> effects = entity.getActivePotionEffects();
+        int identityHash = computeIdentityHash(effects);
+        int durationHash = computeDurationHash(effects);
+        Integer previousIdentityHash = this.potionIdentityHashes.get(entity);
+        Integer previousDurationHash = this.potionDurationHashes.get(entity);
+        boolean identityChanged = previousIdentityHash == null || previousIdentityHash.intValue() != identityHash;
+        boolean durationChanged = previousDurationHash == null || previousDurationHash.intValue() != durationHash;
+        if (!identityChanged && !durationChanged) {
             return;
         }
 
-        this.potionStateHashes.put(entity, stateHash);
-        syncToTrackingPlayers(entity, (WorldServer) entity.worldObj);
+        this.potionIdentityHashes.put(entity, identityHash);
+        this.potionDurationHashes.put(entity, durationHash);
+        syncToTrackingPlayers(entity, (WorldServer) entity.worldObj, identityChanged, durationChanged);
     }
 
     @SubscribeEvent
@@ -80,28 +90,78 @@ public class PotionSyncEventHandler {
         this.clientsWithChannel.remove(event.manager);
     }
 
-    private void syncToTrackingPlayers(EntityLivingBase entity, WorldServer world) {
-        Set<net.minecraft.entity.player.EntityPlayer> trackingPlayers = world.getEntityTracker()
+    @SubscribeEvent
+    public void onServerDisconnect(FMLNetworkEvent.ClientDisconnectionFromServerEvent event) {
+        ClientPotionEffectsCache.clear();
+    }
+
+    private void syncToTrackingPlayers(EntityLivingBase entity, WorldServer world, boolean identityChanged,
+        boolean durationChanged) {
+        Set<EntityPlayer> trackingPlayers = world.getEntityTracker()
             .getTrackingPlayers(entity);
         if (trackingPlayers == null || trackingPlayers.isEmpty()) {
             return;
         }
 
-        EntityPotionEffectsMessage message = buildSnapshot(entity);
-        for (net.minecraft.entity.player.EntityPlayer trackingPlayer : trackingPlayers) {
+        EntityPotionEffectsMessage allHidden = null;
+        EntityPotionEffectsMessage typeOnly = null;
+        EntityPotionEffectsMessage durationOnly = null;
+        EntityPotionEffectsMessage typeAndDuration = null;
+
+        for (EntityPlayer trackingPlayer : trackingPlayers) {
             if (trackingPlayer instanceof EntityPlayerMP) {
                 EntityPlayerMP player = (EntityPlayerMP) trackingPlayer;
                 if (isChannelAvailable(player.playerNetServerHandler.netManager)) {
-                    VDINetwork.getChannel()
-                        .sendTo(message, player);
+                    boolean operator = isPlayerOperator(player);
+                    boolean sendTypes = Config.shouldSendPotionTypes(operator);
+                    boolean sendDurations = Config.shouldSendPotionDurations(operator);
+                    if (sendDurations) {
+                        if (!identityChanged && !durationChanged) {
+                            continue;
+                        }
+                        if (sendTypes) {
+                            if (typeAndDuration == null) {
+                                typeAndDuration = buildSnapshot(entity, true, true);
+                            }
+                            VDINetwork.getChannel()
+                                .sendTo(typeAndDuration, player);
+                        } else {
+                            if (durationOnly == null) {
+                                durationOnly = buildSnapshot(entity, false, true);
+                            }
+                            VDINetwork.getChannel()
+                                .sendTo(durationOnly, player);
+                        }
+                    } else if (sendTypes) {
+                        if (!identityChanged) {
+                            continue;
+                        }
+                        if (typeOnly == null) {
+                            typeOnly = buildSnapshot(entity, true, false);
+                        }
+                        VDINetwork.getChannel()
+                            .sendTo(typeOnly, player);
+                    } else {
+                        if (allHidden == null) {
+                            allHidden = buildSnapshot(entity, false, false);
+                        }
+                        VDINetwork.getChannel()
+                            .sendTo(allHidden, player);
+                    }
                 }
             }
         }
     }
 
     private void sendSnapshot(EntityLivingBase entity, EntityPlayerMP player) {
+        boolean operator = isPlayerOperator(player);
         VDINetwork.getChannel()
-            .sendTo(buildSnapshot(entity), player);
+            .sendTo(
+                buildSnapshot(
+                    entity,
+                    Config.shouldSendPotionTypes(operator),
+                    Config.shouldSendPotionDurations(operator)),
+                player);
     }
 
     private boolean isChannelAvailable(NetworkManager manager) {
@@ -109,21 +169,37 @@ public class PotionSyncEventHandler {
         return Boolean.TRUE.equals(known) || manager.isLocalChannel();
     }
 
-    private EntityPotionEffectsMessage buildSnapshot(EntityLivingBase entity) {
+    private boolean isPlayerOperator(EntityPlayerMP player) {
+        return player.canCommandSenderUseCommand(2, "vdi");
+    }
+
+    private EntityPotionEffectsMessage buildSnapshot(EntityLivingBase entity, boolean includeTypes,
+        boolean includeDurations) {
+        if (!includeTypes && !includeDurations) {
+            return new EntityPotionEffectsMessage(entity.getEntityId(), Collections.<PotionEntry>emptyList());
+        }
+
         List<PotionEntry> entries = new ArrayList<>();
         for (Object effectObject : entity.getActivePotionEffects()) {
             if (effectObject instanceof PotionEffect) {
-                entries.add(PotionEntry.fromServerEffect((PotionEffect) effectObject));
+                entries.add(PotionEntry.fromServerEffect((PotionEffect) effectObject, includeTypes, includeDurations));
             }
         }
         return new EntityPotionEffectsMessage(entity.getEntityId(), entries);
     }
 
-    private int computeStateHash(Collection<PotionEffect> effects) {
+    private int computeIdentityHash(Collection<PotionEffect> effects) {
         int hash = 1;
         for (PotionEffect effect : effects) {
             hash = 31 * hash + effect.getPotionID();
-            hash = 31 * hash + effect.getAmplifier();
+        }
+        return hash;
+    }
+
+    private int computeDurationHash(Collection<PotionEffect> effects) {
+        int hash = 1;
+        for (PotionEffect effect : effects) {
+            hash = 31 * hash + effect.getPotionID();
             hash = 31 * hash + effect.getDuration();
         }
         return hash;

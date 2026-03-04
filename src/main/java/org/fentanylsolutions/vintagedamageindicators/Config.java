@@ -56,6 +56,12 @@ public class Config {
     public static boolean hideOnDebug = false;
     public static String[] oldRenderEntities = {};
 
+    // potion-sync
+    public static boolean serverSendPotionTypesToOps = true;
+    public static boolean serverSendPotionDurationsToOps = true;
+    public static boolean serverSendPotionTypesToNonOps = true;
+    public static boolean serverSendPotionDurationsToNonOps = true;
+
     // entity overrides
     public static String[] entityOverrides = {};
 
@@ -67,6 +73,7 @@ public class Config {
 
         public static final String damageParticles = "damage-particles";
         public static final String hudIndicator = "hud-indicator";
+        public static final String potionSync = "potion-sync";
         public static final String entityOverrides = "type-overrides";
         public static final String debug = "debug";
     }
@@ -327,6 +334,28 @@ public class Config {
                 oldRenderEntities,
                 "List of entity class names to render with the model-only HUD fallback if the normal entity render behaves badly.");
 
+            // potion-sync
+            serverSendPotionTypesToOps = config.getBoolean(
+                "serverSendPotionTypesToOps",
+                Categories.potionSync,
+                serverSendPotionTypesToOps,
+                "Whether server-side VDI sends potion icons to op players.");
+            serverSendPotionDurationsToOps = config.getBoolean(
+                "serverSendPotionDurationsToOps",
+                Categories.potionSync,
+                serverSendPotionDurationsToOps,
+                "Whether server-side VDI sends potion durations to op players.");
+            serverSendPotionTypesToNonOps = config.getBoolean(
+                "serverSendPotionTypesToNonOps",
+                Categories.potionSync,
+                serverSendPotionTypesToNonOps,
+                "Whether server-side VDI sends potion icons to non-op players.");
+            serverSendPotionDurationsToNonOps = config.getBoolean(
+                "serverSendPotionDurationsToNonOps",
+                Categories.potionSync,
+                serverSendPotionDurationsToNonOps,
+                "Whether server-side VDI sends potion durations to non-op players.");
+
             // entity overrides
             entityOverrides = config.getStringList(
                 "entityOverrides",
@@ -376,5 +405,13 @@ public class Config {
         if (config != null) {
             config.save();
         }
+    }
+
+    public static boolean shouldSendPotionTypes(boolean operator) {
+        return operator ? serverSendPotionTypesToOps : serverSendPotionTypesToNonOps;
+    }
+
+    public static boolean shouldSendPotionDurations(boolean operator) {
+        return operator ? serverSendPotionDurationsToOps : serverSendPotionDurationsToNonOps;
     }
 }
