@@ -48,7 +48,7 @@ public class HudEventHandler extends Gui {
     private static final int HEALTH_BAR_WIDTH = HudPreviewMath.HEALTH_BAR_WIDTH;
     private static final int HEALTH_BAR_HEIGHT = HudPreviewMath.HEALTH_BAR_HEIGHT;
     private static final int POTION_PANEL_X = HEALTH_BAR_X - 4;
-    private static final int POTION_PANEL_Y = HEALTH_BAR_Y + HEALTH_BAR_HEIGHT + 2;
+    private static final int POTION_PANEL_Y = HEALTH_BAR_Y + HEALTH_BAR_HEIGHT + 4;
     private static final int POTION_PANEL_HEIGHT = 26;
     private static final int POTION_LEFT_WIDTH = 7;
     private static final int POTION_RIGHT_WIDTH = 6;
