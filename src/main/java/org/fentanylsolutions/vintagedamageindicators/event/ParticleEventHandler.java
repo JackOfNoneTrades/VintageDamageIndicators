@@ -1,7 +1,11 @@
 package org.fentanylsolutions.vintagedamageindicators.event;
 
-import cpw.mods.fml.common.FMLCommonHandler;
-import cpw.mods.fml.common.eventhandler.SubscribeEvent;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
 import net.minecraft.client.Minecraft;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityLivingBase;
@@ -9,16 +13,15 @@ import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.potion.PotionEffect;
 import net.minecraft.util.MathHelper;
 import net.minecraftforge.event.entity.living.LivingEvent;
+
 import org.fentanylsolutions.vintagedamageindicators.Config;
 import org.fentanylsolutions.vintagedamageindicators.rendering.DamageIndicatorParticle;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import cpw.mods.fml.common.FMLCommonHandler;
+import cpw.mods.fml.common.eventhandler.SubscribeEvent;
 
 public class ParticleEventHandler {
+
     public static HashMap<Integer, Integer> healths = new HashMap<>();
     public static Map<Integer, Collection<PotionEffect>> potionEffects = new HashMap();
     public static List<Integer> enemies = new ArrayList();
@@ -27,15 +30,28 @@ public class ParticleEventHandler {
         int lastHealth;
         if (el != null) {
             int currentHealth = MathHelper.ceiling_float_int(el.getHealth());
-            if (healths.containsKey(Integer.valueOf(el.getEntityId())) && (lastHealth = healths.get(Integer.valueOf(el.getEntityId())).intValue()) != 0 && lastHealth != currentHealth) {
+            if (healths.containsKey(Integer.valueOf(el.getEntityId()))
+                && (lastHealth = healths.get(Integer.valueOf(el.getEntityId()))
+                    .intValue()) != 0
+                && lastHealth != currentHealth) {
                 int damage = lastHealth - currentHealth;
-                DamageIndicatorParticle customParticle = new DamageIndicatorParticle(Minecraft.getMinecraft().theWorld, el.posX, el.posY + el.height, el.posZ, 0.001d, 0.05f * Config.bounceStrength, 0.001d, damage);
+                DamageIndicatorParticle customParticle = new DamageIndicatorParticle(
+                    Minecraft.getMinecraft().theWorld,
+                    el.posX,
+                    el.posY + el.height,
+                    el.posZ,
+                    0.001d,
+                    0.05f * Config.bounceStrength,
+                    0.001d,
+                    damage);
                 if (Minecraft.getMinecraft().thePlayer.canEntityBeSeen(el)) {
                     customParticle.renderOnTop = true;
-                } else if (Minecraft.getMinecraft().isSingleplayer()) {
-                    customParticle.renderOnTop = Config.alwaysRender;
-                }
-                if (el != Minecraft.getMinecraft().thePlayer || Minecraft.getMinecraft().gameSettings.thirdPersonView != 0) {
+                } else if (Minecraft.getMinecraft()
+                    .isSingleplayer()) {
+                        customParticle.renderOnTop = Config.alwaysRender;
+                    }
+                if (el != Minecraft.getMinecraft().thePlayer
+                    || Minecraft.getMinecraft().gameSettings.thirdPersonView != 0) {
                     Minecraft.getMinecraft().effectRenderer.addEffect(customParticle);
                 }
             }
@@ -44,27 +60,41 @@ public class ParticleEventHandler {
     }
 
     public static void doCritical(Entity target) {
-        DamageIndicatorParticle customParticle = new DamageIndicatorParticle(Minecraft.getMinecraft().theWorld, target.posX, target.posY + target.height, target.posZ, 0.001d, 0.05f * Config.bounceStrength, 0.001d);
+        DamageIndicatorParticle customParticle = new DamageIndicatorParticle(
+            Minecraft.getMinecraft().theWorld,
+            target.posX,
+            target.posY + target.height,
+            target.posZ,
+            0.001d,
+            0.05f * Config.bounceStrength,
+            0.001d);
         if (Minecraft.getMinecraft().thePlayer.canEntityBeSeen(target)) {
             customParticle.renderOnTop = true;
-        } else if (Minecraft.getMinecraft().isSingleplayer()) {
-            customParticle.renderOnTop = Config.alwaysRender;
-        }
-        if (target != Minecraft.getMinecraft().thePlayer || Minecraft.getMinecraft().gameSettings.thirdPersonView != 0) {
+        } else if (Minecraft.getMinecraft()
+            .isSingleplayer()) {
+                customParticle.renderOnTop = Config.alwaysRender;
+            }
+        if (target != Minecraft.getMinecraft().thePlayer
+            || Minecraft.getMinecraft().gameSettings.thirdPersonView != 0) {
             Minecraft.getMinecraft().effectRenderer.addEffect(customParticle);
         }
     }
 
     @SubscribeEvent
     public void livingUpdateEvent(LivingEvent.LivingUpdateEvent event) {
-        if (!FMLCommonHandler.instance().getEffectiveSide().isClient()) {
+        if (!FMLCommonHandler.instance()
+            .getEffectiveSide()
+            .isClient()) {
             return;
         }
 
         EntityLivingBase entityLiving = event.entityLiving;
-        if (FMLCommonHandler.instance().getEffectiveSide().isClient()) {
+        if (FMLCommonHandler.instance()
+            .getEffectiveSide()
+            .isClient()) {
             EntityPlayer entityLivingBase = Minecraft.getMinecraft().thePlayer;
-            if (entityLiving.getCommandSenderName().equals(Minecraft.getMinecraft().thePlayer.getCommandSenderName())) {
+            if (entityLiving.getCommandSenderName()
+                .equals(Minecraft.getMinecraft().thePlayer.getCommandSenderName())) {
                 entityLiving = Minecraft.getMinecraft().thePlayer;
             }
             if (entityLivingBase != null && entityLivingBase.worldObj != null) {
@@ -79,14 +109,18 @@ public class ParticleEventHandler {
                 }
                 return;
             }
-            if (FMLCommonHandler.instance().getSide().isClient()) {
+            if (FMLCommonHandler.instance()
+                .getSide()
+                .isClient()) {
                 if (event.entityLiving.isDead) {
                     potionEffects.remove(Integer.valueOf(event.entity.getEntityId()));
                     healths.remove(Integer.valueOf(event.entity.getEntityId()));
                     enemies.remove(Integer.valueOf(event.entity.getEntityId()));
                     return;
                 }
-                potionEffects.put(Integer.valueOf(event.entityLiving.getEntityId()), event.entityLiving.getActivePotionEffects());
+                potionEffects.put(
+                    Integer.valueOf(event.entityLiving.getEntityId()),
+                    event.entityLiving.getActivePotionEffects());
             }
         }
     }

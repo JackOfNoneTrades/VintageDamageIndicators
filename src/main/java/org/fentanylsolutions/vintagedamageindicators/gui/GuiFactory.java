@@ -1,18 +1,21 @@
 package org.fentanylsolutions.vintagedamageindicators.gui;
 
-import com.google.common.collect.ImmutableList;
-import cpw.mods.fml.client.IModGuiFactory;
-import cpw.mods.fml.client.config.GuiConfig;
-import cpw.mods.fml.client.config.IConfigElement;
+import java.util.Set;
+
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.GuiScreen;
 import net.minecraft.client.gui.GuiButton;
+import net.minecraft.client.gui.GuiScreen;
 import net.minecraft.client.resources.I18n;
 import net.minecraftforge.common.config.ConfigElement;
+
 import org.fentanylsolutions.vintagedamageindicators.Config;
 import org.fentanylsolutions.vintagedamageindicators.VintageDamageIndicators;
 
-import java.util.Set;
+import com.google.common.collect.ImmutableList;
+
+import cpw.mods.fml.client.IModGuiFactory;
+import cpw.mods.fml.client.config.GuiConfig;
+import cpw.mods.fml.client.config.IConfigElement;
 
 @SuppressWarnings("unused")
 public class GuiFactory implements IModGuiFactory {
@@ -55,11 +58,18 @@ public class GuiFactory implements IModGuiFactory {
                 parentScreen,
                 ImmutableList.of(
                     // Construct directly here to prevent stale references
-                    new ConfigElement(Config.getRawConfig().getCategory(Config.Categories.damageParticles)),
-                    new ConfigElement(Config.getRawConfig().getCategory(Config.Categories.hudIndicator)),
-                    new ConfigElement(Config.getRawConfig().getCategory(Config.Categories.entityOverrides)),
-                    new ConfigElement(Config.getRawConfig().getCategory(Config.Categories.debug))
-                ),
+                    new ConfigElement(
+                        Config.getRawConfig()
+                            .getCategory(Config.Categories.damageParticles)),
+                    new ConfigElement(
+                        Config.getRawConfig()
+                            .getCategory(Config.Categories.hudIndicator)),
+                    new ConfigElement(
+                        Config.getRawConfig()
+                            .getCategory(Config.Categories.entityOverrides)),
+                    new ConfigElement(
+                        Config.getRawConfig()
+                            .getCategory(Config.Categories.debug))),
                 VintageDamageIndicators.MODID,
                 VintageDamageIndicators.MODID,
                 false,

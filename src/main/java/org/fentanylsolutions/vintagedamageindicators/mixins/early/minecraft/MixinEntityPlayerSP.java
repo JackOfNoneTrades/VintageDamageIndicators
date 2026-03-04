@@ -2,9 +2,10 @@ package org.fentanylsolutions.vintagedamageindicators.mixins.early.minecraft;
 
 import net.minecraft.client.entity.EntityPlayerSP;
 import net.minecraft.entity.Entity;
+
 import org.fentanylsolutions.vintagedamageindicators.Config;
-import org.fentanylsolutions.vintagedamageindicators.event.ParticleEventHandler;
 import org.fentanylsolutions.vintagedamageindicators.VintageDamageIndicators;
+import org.fentanylsolutions.vintagedamageindicators.event.ParticleEventHandler;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
@@ -12,6 +13,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 @Mixin(EntityPlayerSP.class)
 public class MixinEntityPlayerSP {
+
     @Inject(method = "onCriticalHit", at = @At("HEAD"), cancellable = true)
     private void onCriticalHitInject(Entity target, CallbackInfo ci) {
         if (Config.disableVanillaCriticalParticles) {
@@ -19,7 +21,9 @@ public class MixinEntityPlayerSP {
             return;
         }
 
-        VintageDamageIndicators.debug("Critical Hit on " + target.getClass().getSimpleName());
+        VintageDamageIndicators.debug(
+            "Critical Hit on " + target.getClass()
+                .getSimpleName());
     }
 
     @Inject(method = "onEnchantmentCritical", at = @At("HEAD"), cancellable = true)

@@ -1,12 +1,13 @@
 package org.fentanylsolutions.vintagedamageindicators.mixins.early.minecraft;
 
-import net.minecraft.client.network.NetHandlerPlayClient;
-import net.minecraft.network.play.server.S0BPacketAnimation;
-import net.minecraft.entity.Entity;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.network.NetHandlerPlayClient;
+import net.minecraft.entity.Entity;
+import net.minecraft.network.play.server.S0BPacketAnimation;
+
 import org.fentanylsolutions.vintagedamageindicators.Config;
-import org.fentanylsolutions.vintagedamageindicators.event.ParticleEventHandler;
 import org.fentanylsolutions.vintagedamageindicators.VintageDamageIndicators;
+import org.fentanylsolutions.vintagedamageindicators.event.ParticleEventHandler;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
@@ -15,11 +16,13 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 @Mixin(NetHandlerPlayClient.class)
 public class MixinNetHandlerPlayClient {
 
-    @Inject(method = "handleAnimation", at = @At(
-        value = "INVOKE",
-        target = "Lnet/minecraft/client/particle/EffectRenderer;addEffect(Lnet/minecraft/client/particle/EntityFX;)V",
-        shift = At.Shift.BEFORE
-    ), cancellable = true)
+    @Inject(
+        method = "handleAnimation",
+        at = @At(
+            value = "INVOKE",
+            target = "Lnet/minecraft/client/particle/EffectRenderer;addEffect(Lnet/minecraft/client/particle/EntityFX;)V",
+            shift = At.Shift.BEFORE),
+        cancellable = true)
     private void onCritEffect(S0BPacketAnimation packetIn, CallbackInfo ci) {
         int animationType = packetIn.func_148977_d();
 

@@ -1,8 +1,7 @@
 package com.github.alexmodguy.retrodamageindicators;
 
-import com.mojang.blaze3d.vertex.PoseStack;
-import com.mojang.blaze3d.vertex.VertexConsumer;
-import com.mojang.math.Axis;
+import java.util.Optional;
+
 import net.minecraft.client.Camera;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
@@ -14,9 +13,10 @@ import net.minecraft.core.particles.ParticleGroup;
 import net.minecraft.network.chat.Component;
 import net.minecraft.util.Mth;
 import net.minecraft.world.phys.Vec3;
-import org.joml.Quaternionf;
 
-import java.util.Optional;
+import com.mojang.blaze3d.vertex.PoseStack;
+import com.mojang.blaze3d.vertex.VertexConsumer;
+import com.mojang.math.Axis;
 
 public class DamageIndicatorParticle extends Particle {
 
@@ -26,14 +26,16 @@ public class DamageIndicatorParticle extends Particle {
     private float scale;
     private float prevScale;
 
-    protected DamageIndicatorParticle(ClientLevel clientLevel, double x, double y, double z, double damageAmount, boolean heal) {
+    protected DamageIndicatorParticle(ClientLevel clientLevel, double x, double y, double z, double damageAmount,
+        boolean heal) {
         super(clientLevel, x, y, z);
         this.lifetime = 15 + clientLevel.random.nextInt(5);
         String text;
-        if(Config.INSTANCE.healthDecimals.get()){
-            text = String.valueOf(RetroDamageIndicators.roundHealth((float) damageAmount)).replace(".0", "");
-        }else{
-            text = "" + (int)damageAmount;
+        if (Config.INSTANCE.healthDecimals.get()) {
+            text = String.valueOf(RetroDamageIndicators.roundHealth((float) damageAmount))
+                .replace(".0", "");
+        } else {
+            text = "" + (int) damageAmount;
         }
         this.damageString = Component.literal(text);
         this.heal = heal;
@@ -43,7 +45,7 @@ public class DamageIndicatorParticle extends Particle {
     }
 
     @Override
-    public void tick(){
+    public void tick() {
         super.tick();
         float ageScaled = age / (float) lifetime;
         this.prevScale = scale;
@@ -52,7 +54,9 @@ public class DamageIndicatorParticle extends Particle {
 
     @Override
     public void render(VertexConsumer vertexConsumer, Camera camera, float partialTicks) {
-        MultiBufferSource.BufferSource multibuffersource$buffersource = Minecraft.getInstance().renderBuffers().bufferSource();
+        MultiBufferSource.BufferSource multibuffersource$buffersource = Minecraft.getInstance()
+            .renderBuffers()
+            .bufferSource();
         Vec3 cameraPos = camera.getPosition();
         double x = (float) (Mth.lerp((double) partialTicks, this.xo, this.x));
         double y = (float) (Mth.lerp((double) partialTicks, this.yo, this.y));
@@ -65,13 +69,33 @@ public class DamageIndicatorParticle extends Particle {
         posestack.translate(x - cameraPos.x, y - cameraPos.y, z - cameraPos.z);
         posestack.mulPose(camera.rotation());
         posestack.mulPose(Axis.ZP.rotationDegrees(180.0F));
-        float f = (float)(-Minecraft.getInstance().font.width(damageString) / 2);
+        float f = (float) (-Minecraft.getInstance().font.width(damageString) / 2);
         posestack.scale(scale, scale, scale);
         posestack.translate(0.0F, -2.0F, 0.0F);
-        if(Config.INSTANCE.damageParticleOutline.get()){
-            Minecraft.getInstance().font.drawInBatch8xOutline(damageString.getVisualOrderText(), f, 0.0F, color, colorOutline, posestack.last().pose(), multibuffersource$buffersource, 15728880);
-        }else{
-            Minecraft.getInstance().font.drawInBatch(damageString.getVisualOrderText(), f, 0.0F, color, false, posestack.last().pose(), multibuffersource$buffersource, Font.DisplayMode.NORMAL, 0, 15728880);
+        if (Config.INSTANCE.damageParticleOutline.get()) {
+            Minecraft.getInstance().font.drawInBatch8xOutline(
+                damageString.getVisualOrderText(),
+                f,
+                0.0F,
+                color,
+                colorOutline,
+                posestack.last()
+                    .pose(),
+                multibuffersource$buffersource,
+                15728880);
+        } else {
+            Minecraft.getInstance().font.drawInBatch(
+                damageString.getVisualOrderText(),
+                f,
+                0.0F,
+                color,
+                false,
+                posestack.last()
+                    .pose(),
+                multibuffersource$buffersource,
+                Font.DisplayMode.NORMAL,
+                0,
+                15728880);
         }
         multibuffersource$buffersource.endBatch();
         posestack.popPose();

@@ -1,6 +1,7 @@
 package org.fentanylsolutions.vintagedamageindicators.util;
 
 public class Util {
+
     public static int getA(int argb) {
         return (argb >> 24) & 0xFF;
     }
@@ -23,10 +24,10 @@ public class Util {
 
     /* alpha from 0 to 1 */
     public static int applyAlpha(int argb, float alpha) {
-        int a = Math.max(0, Math.min(255, (int)Math.floor(alpha * 256.0)));
+        int a = Math.max(0, Math.min(255, (int) Math.floor(alpha * 256.0)));
         int r = getR(argb);
         int g = getG(argb);
         int b = getB(argb);
-        return argbtoInt(a, r,g, b);
+        return argbtoInt(a, r, g, b);
     }
 }

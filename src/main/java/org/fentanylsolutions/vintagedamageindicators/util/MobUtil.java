@@ -1,6 +1,7 @@
 package org.fentanylsolutions.vintagedamageindicators.util;
 
 import net.minecraft.entity.EntityList;
+
 import org.fentanylsolutions.vintagedamageindicators.VintageDamageIndicators;
 
 public class MobUtil {

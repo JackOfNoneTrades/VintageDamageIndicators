@@ -1,12 +1,12 @@
 package org.fentanylsolutions.vintagedamageindicators;
 
+import org.fentanylsolutions.vintagedamageindicators.util.MobUtil;
+import org.fentanylsolutions.vintagedamageindicators.varinstances.VarInstanceCommon;
+
 import cpw.mods.fml.common.event.FMLInitializationEvent;
 import cpw.mods.fml.common.event.FMLPostInitializationEvent;
 import cpw.mods.fml.common.event.FMLPreInitializationEvent;
 import cpw.mods.fml.common.event.FMLServerStartingEvent;
-import net.minecraftforge.common.MinecraftForge;
-import org.fentanylsolutions.vintagedamageindicators.util.MobUtil;
-import org.fentanylsolutions.vintagedamageindicators.varinstances.VarInstanceCommon;
 
 public class CommonProxy {
 

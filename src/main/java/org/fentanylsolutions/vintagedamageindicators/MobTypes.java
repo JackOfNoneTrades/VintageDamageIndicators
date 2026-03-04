@@ -1,5 +1,7 @@
 package org.fentanylsolutions.vintagedamageindicators;
 
+import java.util.Locale;
+
 import net.minecraft.entity.EntityLivingBase;
 import net.minecraft.entity.boss.IBossDisplayData;
 import net.minecraft.entity.monster.EntityGolem;
@@ -12,12 +14,11 @@ import net.minecraft.entity.passive.EntityVillager;
 import net.minecraft.entity.passive.EntityWaterMob;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.util.ResourceLocation;
+
 import org.fentanylsolutions.vintagedamageindicators.varinstances.VarInstanceCommon;
 
-
-import java.util.Locale;
-
 public enum MobTypes {
+
     PLAYER,
     UNDEAD,
     UNDEAD_ANIMAL,
@@ -36,19 +37,25 @@ public enum MobTypes {
     BOSS;
 
     private final ResourceLocation texture;
-    MobTypes(){
-        texture = new ResourceLocation("retrodamageindicators:textures/gui/mob_types/" + name().toLowerCase(Locale.ROOT) + ".png");
+
+    MobTypes() {
+        texture = new ResourceLocation(
+            "vintagedamageindicators:textures/gui/mob_types/" + name().toLowerCase(Locale.ROOT) + ".png");
     }
 
     public static MobTypes getTypeFor(EntityLivingBase entity) {
-        VarInstanceCommon.EntityOverride eo = VintageDamageIndicators.varInstanceCommon.entityOverrides.get(entity.getClass());
-        if (eo != null) {
-            return eo.type;
+        if (VintageDamageIndicators.varInstanceCommon != null
+            && VintageDamageIndicators.varInstanceCommon.entityOverrides != null) {
+            VarInstanceCommon.EntityOverride eo = VintageDamageIndicators.varInstanceCommon.entityOverrides
+                .get(entity.getClass());
+            if (eo != null) {
+                return eo.type;
+            }
         }
 
-        if(entity instanceof EntityPlayer){
+        if (entity instanceof EntityPlayer) {
             return PLAYER;
-        } else if(entity instanceof IBossDisplayData){
+        } else if (entity instanceof IBossDisplayData) {
             return BOSS;
         } else if (entity instanceof EntityWaterMob) {
             return WATER_ANIMAL;

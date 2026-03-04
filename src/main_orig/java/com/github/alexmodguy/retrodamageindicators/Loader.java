@@ -11,11 +11,19 @@ import net.minecraftforge.forgespi.Environment;
 public class Loader {
 
     public Loader() {
-        ModLoadingContext.get().registerExtensionPoint(IExtensionPoint.DisplayTest.class, () -> new IExtensionPoint.DisplayTest(() -> IExtensionPoint.DisplayTest.IGNORESERVERONLY, (a, b) -> true));
+        ModLoadingContext.get()
+            .registerExtensionPoint(
+                IExtensionPoint.DisplayTest.class,
+                () -> new IExtensionPoint.DisplayTest(
+                    () -> IExtensionPoint.DisplayTest.IGNORESERVERONLY,
+                    (a, b) -> true));
 
-        if (Environment.get().getDist().isClient()) {
+        if (Environment.get()
+            .getDist()
+            .isClient()) {
             MinecraftForge.EVENT_BUS.register(RetroDamageIndicators.class);
-            ModLoadingContext.get().registerConfig(ModConfig.Type.CLIENT, Config.SPEC);
+            ModLoadingContext.get()
+                .registerConfig(ModConfig.Type.CLIENT, Config.SPEC);
         }
     }
 }

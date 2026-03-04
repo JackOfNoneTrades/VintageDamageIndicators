@@ -1,6 +1,5 @@
 package org.fentanylsolutions.vintagedamageindicators.rendering;
 
-import cpw.mods.fml.relauncher.SideOnly;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.FontRenderer;
 import net.minecraft.client.particle.EntityFX;
@@ -9,16 +8,19 @@ import net.minecraft.client.renderer.Tessellator;
 import net.minecraft.client.resources.I18n;
 import net.minecraft.util.MathHelper;
 import net.minecraft.world.World;
-import cpw.mods.fml.relauncher.Side;
+
 import org.fentanylsolutions.vintagedamageindicators.Config;
 import org.fentanylsolutions.vintagedamageindicators.util.Util;
 import org.lwjgl.opengl.GL11;
 
+import cpw.mods.fml.relauncher.Side;
+import cpw.mods.fml.relauncher.SideOnly;
 
 // TODO: cache the critical text localization and hook into I18n to refresh it whenever the language is changed
 
 @SideOnly(Side.CLIENT)
 public class DamageIndicatorParticle extends EntityFX {
+
     private boolean isCritical;
     private String particleText;
     private boolean isHeal;
@@ -33,7 +35,8 @@ public class DamageIndicatorParticle extends EntityFX {
     private int shadowColor;
 
     /* Critical particle constructor */
-    public DamageIndicatorParticle(World world, double xCoordIn, double yCoordIn, double zCoordIn, double xSpeedIn, double ySpeedIn, double zSpeedIn) {
+    public DamageIndicatorParticle(World world, double xCoordIn, double yCoordIn, double zCoordIn, double xSpeedIn,
+        double ySpeedIn, double zSpeedIn) {
         this(world, xCoordIn, yCoordIn, zCoordIn, xSpeedIn, ySpeedIn, zSpeedIn, 0);
         this.isCritical = true;
         this.particleGravity = Config.criticalParticleGravity;
@@ -46,7 +49,8 @@ public class DamageIndicatorParticle extends EntityFX {
     }
 
     /* Normal constructor */
-    public DamageIndicatorParticle(World world, double xCoordIn, double yCoordIn, double zCoordIn, double xSpeedIn, double ySpeedIn, double zSpeedIn, int damage) {
+    public DamageIndicatorParticle(World world, double xCoordIn, double yCoordIn, double zCoordIn, double xSpeedIn,
+        double ySpeedIn, double zSpeedIn, int damage) {
         super(world, xCoordIn, yCoordIn, zCoordIn, xSpeedIn, ySpeedIn, zSpeedIn);
         this.isCritical = false;
         this.damage = Math.abs(damage);
@@ -61,7 +65,8 @@ public class DamageIndicatorParticle extends EntityFX {
         this.motionZ = zSpeedIn;
         this.scale = Config.damageParticleScale;
 
-        float motionMagnitude = MathHelper.sqrt_double((this.motionX * this.motionX) + (this.motionY * this.motionY) + (this.motionZ * this.motionZ));
+        float motionMagnitude = MathHelper
+            .sqrt_double((this.motionX * this.motionX) + (this.motionY * this.motionY) + (this.motionZ * this.motionZ));
         this.motionX = (this.motionX / motionMagnitude) * 0.12d;
         this.motionY = (this.motionY / motionMagnitude) * 0.12d;
         this.motionZ = (this.motionZ / motionMagnitude) * 0.12d;
@@ -73,20 +78,22 @@ public class DamageIndicatorParticle extends EntityFX {
         this.particleMaxAge = Config.damageParticleLifespan;
         this.particleAge = 0;
 
-        this.color = Util.applyAlpha(this.isHeal ? Config.healColor : Config.hurtColor, Config.damageParticleTransparency);
+        this.color = Util
+            .applyAlpha(this.isHeal ? Config.healColor : Config.hurtColor, Config.damageParticleTransparency);
         int color_ = this.isHeal ? Config.healColor : Config.hurtColor;
         int r = (color_ >> 16) & 0xFF;
         int g = (color_ >> 8) & 0xFF;
         int b = color_ & 0xFF;
-        r = (int)(r / 5.0f);
-        g = (int)(g / 5.0f);
-        b = (int)(b / 5.0f);
+        r = (int) (r / 5.0f);
+        g = (int) (g / 5.0f);
+        b = (int) (b / 5.0f);
         int shadowColor_ = (0xFF << 24) | (r << 16) | (g << 8) | b;
         this.shadowColor = Util.applyAlpha(shadowColor_, Config.damageParticleTransparency);
         this.particleText = String.valueOf(this.damage);
     }
 
-    public void renderParticle(Tessellator p_renderParticle_1_, float par2, float par3, float par4, float par5, float par6, float par7) {
+    public void renderParticle(Tessellator p_renderParticle_1_, float par2, float par3, float par4, float par5,
+        float par6, float par7) {
         this.rotationYaw = -Minecraft.getMinecraft().thePlayer.rotationYaw;
         this.rotationPitch = Minecraft.getMinecraft().thePlayer.rotationPitch;
         float size = 0.1f * this.particleScale;
@@ -124,9 +131,17 @@ public class DamageIndicatorParticle extends EntityFX {
         GL11.glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
 
         if (Config.dropShadow) {
-            fontRenderer.drawString(this.particleText, (-MathHelper.floor_float(fontRenderer.getStringWidth(this.particleText) / 2.0f)) + 1, (-MathHelper.floor_float(fontRenderer.FONT_HEIGHT / 2.0f)) + 1, this.shadowColor);
+            fontRenderer.drawString(
+                this.particleText,
+                (-MathHelper.floor_float(fontRenderer.getStringWidth(this.particleText) / 2.0f)) + 1,
+                (-MathHelper.floor_float(fontRenderer.FONT_HEIGHT / 2.0f)) + 1,
+                this.shadowColor);
         }
-        fontRenderer.drawString(this.particleText, -MathHelper.floor_float(fontRenderer.getStringWidth(this.particleText) / 2.0f), -MathHelper.floor_float(fontRenderer.FONT_HEIGHT / 2.0f), this.color);
+        fontRenderer.drawString(
+            this.particleText,
+            -MathHelper.floor_float(fontRenderer.getStringWidth(this.particleText) / 2.0f),
+            -MathHelper.floor_float(fontRenderer.FONT_HEIGHT / 2.0f),
+            this.color);
 
         GL11.glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
         GL11.glDepthFunc(GL11.GL_LEQUAL);

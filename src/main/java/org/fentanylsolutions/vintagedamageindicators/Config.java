@@ -40,14 +40,16 @@ public class Config {
     public static int hudLingerTime = 30;
     public static float hudIndicatorSize = 0.75f;
     public static float hudIndicatorBackgroundOpacity = 0.75f;
+    public static float hudEntitySize = 38.0f;
     public static boolean hudIndicatorAlignLeft = true;
     public static boolean hudIndicatorAlignTop = true;
     public static int hudIndicatorPositionX = 10;
-    public static int  hudIndicatorPositionY = 10;
+    public static int hudIndicatorPositionY = 10;
     public static boolean hudNameTextOutline = false;
     public static boolean hudHealthTextOutline = false;
     public static boolean disableBossBar = false;
     public static boolean hideOnDebug = false;
+    public static String[] oldRenderEntities = {};
 
     // entity overrides
     public static String[] entityOverrides = {};
@@ -71,51 +73,240 @@ public class Config {
             config.load();
 
             // damage-particles
-            damageParticlesEnabled = config.getBoolean("damageParticlesEnabled", Categories.damageParticles, damageParticlesEnabled, "Whether the pop-up particles when a mob is injured or healed are enabled.");
-            damageParticleGravity = config.getFloat("damageParticleGravity", Categories.damageParticles, damageParticleGravity, Float.MIN_VALUE, Float.MAX_VALUE, "Speed at which damage particles fall.");
-            damageParticleScale = config.getFloat("damageParticleScale", Categories.damageParticles, damageParticleScale, 0.01F, 10, "The scale of damage particles.");
-            damageParticleOutline = config.getBoolean("damageParticleOutline", Categories.damageParticles, damageParticleOutline, "Whether the numbers that appear as pop-up particles are outlined in a darker color.");
-            damageParticleLifespan = config.getInt("damageParticleLifespan", Categories.damageParticles, damageParticleLifespan, 0, Integer.MAX_VALUE, "Damage particle lifespan.");
-            damageParticleTransparency = config.getFloat("damageParticleTransparency", Categories.damageParticles, damageParticleTransparency, 0, 1, "Damage particle transparency.");
-            hurtColor = Integer.parseInt(config.getString("hurtColor", Categories.damageParticles, Integer.toHexString(hurtColor), "Color of hurt particles, in hex format. (e.g. FFAA00)"), 16);
-            healColor = Integer.parseInt(config.getString("healColor", Categories.damageParticles, Integer.toHexString(healColor), "Color of heal particles, in hex format. (e.g. 00FF00)"), 16);
+            damageParticlesEnabled = config.getBoolean(
+                "damageParticlesEnabled",
+                Categories.damageParticles,
+                damageParticlesEnabled,
+                "Whether the pop-up particles when a mob is injured or healed are enabled.");
+            damageParticleGravity = config.getFloat(
+                "damageParticleGravity",
+                Categories.damageParticles,
+                damageParticleGravity,
+                Float.MIN_VALUE,
+                Float.MAX_VALUE,
+                "Speed at which damage particles fall.");
+            damageParticleScale = config.getFloat(
+                "damageParticleScale",
+                Categories.damageParticles,
+                damageParticleScale,
+                0.01F,
+                10,
+                "The scale of damage particles.");
+            damageParticleOutline = config.getBoolean(
+                "damageParticleOutline",
+                Categories.damageParticles,
+                damageParticleOutline,
+                "Whether the numbers that appear as pop-up particles are outlined in a darker color.");
+            damageParticleLifespan = config.getInt(
+                "damageParticleLifespan",
+                Categories.damageParticles,
+                damageParticleLifespan,
+                0,
+                Integer.MAX_VALUE,
+                "Damage particle lifespan.");
+            damageParticleTransparency = config.getFloat(
+                "damageParticleTransparency",
+                Categories.damageParticles,
+                damageParticleTransparency,
+                0,
+                1,
+                "Damage particle transparency.");
+            hurtColor = Integer.parseInt(
+                config.getString(
+                    "hurtColor",
+                    Categories.damageParticles,
+                    Integer.toHexString(hurtColor),
+                    "Color of hurt particles, in hex format. (e.g. FFAA00)"),
+                16);
+            healColor = Integer.parseInt(
+                config.getString(
+                    "healColor",
+                    Categories.damageParticles,
+                    Integer.toHexString(healColor),
+                    "Color of heal particles, in hex format. (e.g. 00FF00)"),
+                16);
 
-            criticalParticlesEnabled = config.getBoolean("criticalParticlesEnabled", Categories.damageParticles, criticalParticlesEnabled, "Whether critical particles are enabled.");
-            criticalParticleGravity = config.getFloat("criticalParticleGravity", Categories.damageParticles, criticalParticleGravity, Float.MIN_VALUE, Float.MAX_VALUE, "Speed at which critical particles fall.");
-            criticalParticleScale = config.getFloat("criticalParticleScale", Categories.damageParticles, criticalParticleScale, 0.01F, 10, "The scale of critical particles.");
-            criticalParticleLifespan = config.getInt("criticalParticleLifespan", Categories.damageParticles, criticalParticleLifespan, 0, Integer.MAX_VALUE, "Critical particle lifespan.");
-            criticalParticleTransparency = config.getFloat("criticalParticleTransparency", Categories.damageParticles, criticalParticleTransparency, 0, 1, "Critical particle transparency.");
-            criticalParticleColor = Integer.parseInt(config.getString("criticalParticleColor", Categories.damageParticles, Integer.toHexString(criticalParticleColor), "Color of critical particles, in hex format. (e.g. 8C1E02)"), 16);
+            criticalParticlesEnabled = config.getBoolean(
+                "criticalParticlesEnabled",
+                Categories.damageParticles,
+                criticalParticlesEnabled,
+                "Whether critical particles are enabled.");
+            criticalParticleGravity = config.getFloat(
+                "criticalParticleGravity",
+                Categories.damageParticles,
+                criticalParticleGravity,
+                Float.MIN_VALUE,
+                Float.MAX_VALUE,
+                "Speed at which critical particles fall.");
+            criticalParticleScale = config.getFloat(
+                "criticalParticleScale",
+                Categories.damageParticles,
+                criticalParticleScale,
+                0.01F,
+                10,
+                "The scale of critical particles.");
+            criticalParticleLifespan = config.getInt(
+                "criticalParticleLifespan",
+                Categories.damageParticles,
+                criticalParticleLifespan,
+                0,
+                Integer.MAX_VALUE,
+                "Critical particle lifespan.");
+            criticalParticleTransparency = config.getFloat(
+                "criticalParticleTransparency",
+                Categories.damageParticles,
+                criticalParticleTransparency,
+                0,
+                1,
+                "Critical particle transparency.");
+            criticalParticleColor = Integer.parseInt(
+                config.getString(
+                    "criticalParticleColor",
+                    Categories.damageParticles,
+                    Integer.toHexString(criticalParticleColor),
+                    "Color of critical particles, in hex format. (e.g. 8C1E02)"),
+                16);
 
-            dropShadow = config.getBoolean("dropShadow", Categories.damageParticles, dropShadow, "Whether particles drop shadows.");
-            bounceStrength = config.getFloat("bounceStrength", Categories.damageParticles, bounceStrength, 0, Float.MAX_VALUE, "Strength at which particles bounce at spawn.");
-            alwaysRender = config.getBoolean("alwaysRender", Categories.damageParticles, alwaysRender, "Whether particles should always be visible, ignoring obstructing blocks.");
-            disableVanillaCriticalParticles = config.getBoolean("disableVanillaCriticalParticles", Categories.damageParticles, disableVanillaCriticalParticles, "Whether particles vanilla critical particles are disabled.");
+            dropShadow = config
+                .getBoolean("dropShadow", Categories.damageParticles, dropShadow, "Whether particles drop shadows.");
+            bounceStrength = config.getFloat(
+                "bounceStrength",
+                Categories.damageParticles,
+                bounceStrength,
+                0,
+                Float.MAX_VALUE,
+                "Strength at which particles bounce at spawn.");
+            alwaysRender = config.getBoolean(
+                "alwaysRender",
+                Categories.damageParticles,
+                alwaysRender,
+                "Whether particles should always be visible, ignoring obstructing blocks.");
+            disableVanillaCriticalParticles = config.getBoolean(
+                "disableVanillaCriticalParticles",
+                Categories.damageParticles,
+                disableVanillaCriticalParticles,
+                "Whether particles vanilla critical particles are disabled.");
 
             // hud-indicator
-             hudIndicatorEnabled = config.getBoolean("hudIndicatorEnabled", Categories.hudIndicator, hudIndicatorEnabled, "Whether the hud damage indicator is enabled.");
-             maxDistance = config.getFloat("maxDistance", Categories.hudIndicator, maxDistance, 3, 10000, "How far away (in blocks) entities can be to appear in the hud health indicator");
-             colorblindHealthBar = config.getBoolean("colorblindHealthBar", Categories.hudIndicator, colorblindHealthBar, "Whether health appears with a more visible yellow/black scheme.");
-             healthDecimals = config.getBoolean("healthDecimals", Categories.hudIndicator, healthDecimals, "Whether health appears with a decimal point.");
-             healthSeparator = config.getBoolean("healthSeparator", Categories.hudIndicator, healthSeparator, "Whether health appears appears as a | (true) or / (false).");
-             hudLingerTime = config.getInt("hudLingerTime", Categories.hudIndicator, hudLingerTime, 0, 1200, "How long after mousing over an entity the hud damage indicator remains on screen, in game ticks.");
-             hudIndicatorSize = maxDistance = config.getFloat("hudIndicatorSize", Categories.hudIndicator, hudIndicatorSize, 0, 10, "The relative size of hud indicator.");
-             hudIndicatorBackgroundOpacity = maxDistance = config.getFloat("hudIndicatorBackgroundOpacity", Categories.hudIndicator, hudIndicatorBackgroundOpacity, 0, 10, "How opaque the background of the hud indicator is.");
-             hudIndicatorAlignLeft = config.getBoolean("hudIndicatorAlignLeft", Categories.hudIndicator, hudIndicatorAlignLeft, "True if the hud indicator appears on the left side of the screen, false for right.");
-             hudIndicatorAlignTop = config.getBoolean("hudIndicatorAlignTop", Categories.hudIndicator, hudIndicatorAlignTop, "True if the hud indicator appears on the top of the screen, false for bottom.");
-             hudIndicatorPositionX = config.getInt("hudIndicatorPositionX", Categories.hudIndicator, hudIndicatorPositionX, Integer.MIN_VALUE, Integer.MAX_VALUE, "How many pixels from the left side of the screen the hud indicator is.");
-             hudIndicatorPositionY = config.getInt("hudIndicatorPositionY", Categories.hudIndicator, hudIndicatorPositionY, Integer.MIN_VALUE, Integer.MAX_VALUE, "How many pixels from the top of the screen the hud indicator is.");
-             hudNameTextOutline = config.getBoolean("hudNameTextOutline", Categories.hudIndicator, hudNameTextOutline, "Whether the name of the entity in the hud indicator should be outlined.");
-             hudHealthTextOutline = config.getBoolean("hudHealthTextOutline", Categories.hudIndicator, hudHealthTextOutline, "Whether the health of the entity in the hud indicator should be outlined.");
-            disableBossBar = config.getBoolean("disableBossBar", Categories.hudIndicator, disableBossBar, "Whether to disable the boss bar.");
-            hideOnDebug = config.getBoolean("hideOnDebug", Categories.hudIndicator, hideOnDebug, "Whether to hide the HUD when the debug screen is enabled.");
+            hudIndicatorEnabled = config.getBoolean(
+                "hudIndicatorEnabled",
+                Categories.hudIndicator,
+                hudIndicatorEnabled,
+                "Whether the hud damage indicator is enabled.");
+            maxDistance = config.getFloat(
+                "maxDistance",
+                Categories.hudIndicator,
+                maxDistance,
+                3,
+                10000,
+                "How far away (in blocks) entities can be to appear in the hud health indicator");
+            colorblindHealthBar = config.getBoolean(
+                "colorblindHealthBar",
+                Categories.hudIndicator,
+                colorblindHealthBar,
+                "Whether health appears with a more visible yellow/black scheme.");
+            healthDecimals = config.getBoolean(
+                "healthDecimals",
+                Categories.hudIndicator,
+                healthDecimals,
+                "Whether health appears with a decimal point.");
+            healthSeparator = config.getBoolean(
+                "healthSeparator",
+                Categories.hudIndicator,
+                healthSeparator,
+                "Whether health appears appears as a | (true) or / (false).");
+            hudLingerTime = config.getInt(
+                "hudLingerTime",
+                Categories.hudIndicator,
+                hudLingerTime,
+                0,
+                1200,
+                "How long after mousing over an entity the hud damage indicator remains on screen, in game ticks.");
+            hudIndicatorSize = config.getFloat(
+                "hudIndicatorSize",
+                Categories.hudIndicator,
+                hudIndicatorSize,
+                0,
+                10,
+                "The relative size of hud indicator.");
+            hudIndicatorBackgroundOpacity = config.getFloat(
+                "hudIndicatorBackgroundOpacity",
+                Categories.hudIndicator,
+                hudIndicatorBackgroundOpacity,
+                0,
+                10,
+                "How opaque the background of the hud indicator is.");
+            hudEntitySize = config.getFloat(
+                "hudEntitySize",
+                Categories.hudIndicator,
+                hudEntitySize,
+                0,
+                2000,
+                "The size in pixels a usual entity should render as in the HUD indicator.");
+            hudIndicatorAlignLeft = config.getBoolean(
+                "hudIndicatorAlignLeft",
+                Categories.hudIndicator,
+                hudIndicatorAlignLeft,
+                "True if the hud indicator appears on the left side of the screen, false for right.");
+            hudIndicatorAlignTop = config.getBoolean(
+                "hudIndicatorAlignTop",
+                Categories.hudIndicator,
+                hudIndicatorAlignTop,
+                "True if the hud indicator appears on the top of the screen, false for bottom.");
+            hudIndicatorPositionX = config.getInt(
+                "hudIndicatorPositionX",
+                Categories.hudIndicator,
+                hudIndicatorPositionX,
+                Integer.MIN_VALUE,
+                Integer.MAX_VALUE,
+                "How many pixels from the left side of the screen the hud indicator is.");
+            hudIndicatorPositionY = config.getInt(
+                "hudIndicatorPositionY",
+                Categories.hudIndicator,
+                hudIndicatorPositionY,
+                Integer.MIN_VALUE,
+                Integer.MAX_VALUE,
+                "How many pixels from the top of the screen the hud indicator is.");
+            hudNameTextOutline = config.getBoolean(
+                "hudNameTextOutline",
+                Categories.hudIndicator,
+                hudNameTextOutline,
+                "Whether the name of the entity in the hud indicator should be outlined.");
+            hudHealthTextOutline = config.getBoolean(
+                "hudHealthTextOutline",
+                Categories.hudIndicator,
+                hudHealthTextOutline,
+                "Whether the health of the entity in the hud indicator should be outlined.");
+            disableBossBar = config.getBoolean(
+                "disableBossBar",
+                Categories.hudIndicator,
+                disableBossBar,
+                "Whether to disable the boss bar.");
+            hideOnDebug = config.getBoolean(
+                "hideOnDebug",
+                Categories.hudIndicator,
+                hideOnDebug,
+                "Whether to hide the HUD when the debug screen is enabled.");
+            oldRenderEntities = config.getStringList(
+                "oldRenderEntities",
+                Categories.hudIndicator,
+                oldRenderEntities,
+                "List of entity class names to render with the model-only HUD fallback if the normal entity render behaves badly.");
 
-             // entity overrides
-            entityOverrides = config.getStringList("entityOverrides", Categories.entityOverrides, entityOverrides, "Entity-specific render overrides.");
+            // entity overrides
+            entityOverrides = config.getStringList(
+                "entityOverrides",
+                Categories.entityOverrides,
+                entityOverrides,
+                "Entity-specific render overrides.");
 
             // Debug
             debugMode = config.getBoolean("debugMode", Categories.debug, debugMode, "Enable debug logging");
-            printMobs = config.getBoolean("printMobs", Categories.debug, printMobs, "If set to true, print a list of mob names on game post init.");
+            printMobs = config.getBoolean(
+                "printMobs",
+                Categories.debug,
+                printMobs,
+                "If set to true, print a list of mob names on game post init.");
 
         } catch (Exception e) {
             System.err.println("Error loading config: " + e.getMessage());

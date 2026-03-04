@@ -1,9 +1,14 @@
 package org.fentanylsolutions.vintagedamageindicators;
 
-import net.minecraft.entity.EntityLiving;
+import java.io.File;
+
 import net.minecraft.util.ResourceLocation;
+
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.fentanylsolutions.vintagedamageindicators.varinstances.VarInstanceClient;
+import org.fentanylsolutions.vintagedamageindicators.varinstances.VarInstanceCommon;
+import org.joml.Quaternionf;
 
 import cpw.mods.fml.common.Mod;
 import cpw.mods.fml.common.SidedProxy;
@@ -11,13 +16,14 @@ import cpw.mods.fml.common.event.FMLInitializationEvent;
 import cpw.mods.fml.common.event.FMLPostInitializationEvent;
 import cpw.mods.fml.common.event.FMLPreInitializationEvent;
 import cpw.mods.fml.common.event.FMLServerStartingEvent;
-import org.fentanylsolutions.vintagedamageindicators.varinstances.VarInstanceCommon;
-import org.joml.Quaternionf;
 
-import java.io.File;
-
-@Mod(modid = VintageDamageIndicators.MODID, version = Tags.VERSION, name = "Vintage Damage Indicators", acceptedMinecraftVersions = "[1.7.10]",
-acceptableRemoteVersions = "*", guiFactory = "org.fentanylsolutions.vintagedamageindicators.gui.GuiFactory")
+@Mod(
+    modid = VintageDamageIndicators.MODID,
+    version = Tags.VERSION,
+    name = "Vintage Damage Indicators",
+    acceptedMinecraftVersions = "[1.7.10]",
+    acceptableRemoteVersions = "*",
+    guiFactory = "org.fentanylsolutions.vintagedamageindicators.gui.GuiFactory")
 public class VintageDamageIndicators {
 
     public static final String MODID = "vintagedamageindicators";
@@ -28,19 +34,25 @@ public class VintageDamageIndicators {
 
     public static File confFile;
 
-    @SidedProxy(clientSide = MODGROUP + "." + MODID + ".ClientProxy", serverSide = MODGROUP + "." + MODID + ".CommonProxy")
+    @SidedProxy(
+        clientSide = MODGROUP + "." + MODID + ".ClientProxy",
+        serverSide = MODGROUP + "." + MODID + ".CommonProxy")
     public static CommonProxy proxy;
 
     public static VarInstanceCommon varInstanceCommon;
+    public static VarInstanceClient varInstanceClient;
 
-    private static final ResourceLocation DAMAGE_INDICATOR_TEXTURE = new ResourceLocation(MODID, "textures/gui/damage_indicator.png");
-    private static final ResourceLocation DAMAGE_INDICATOR_BACKGROUND_TEXTURE = new ResourceLocation(MODID, "textures/gui/damage_indicator_background.png");
-    private static final ResourceLocation DAMAGE_INDICATOR_HEALTH_TEXTURE = new ResourceLocation(MODID, "textures/gui/damage_indicator_health.png");
-    private static final Quaternionf ENTITY_ROTATION = (new Quaternionf()).rotationXYZ((float) Math.toRadians(30), (float) Math.toRadians(130), (float) Math.PI);
-    private static EntityLiving damageIndicatorEntity;
-    private static MobTypes currentMobType = MobTypes.UNKNOWN;
-    private static int resetDamageIndicatorEntityIn = 0;
-    private static boolean renderModelOnly;
+    private static final ResourceLocation DAMAGE_INDICATOR_TEXTURE = new ResourceLocation(
+        MODID,
+        "textures/gui/damage_indicator.png");
+    private static final ResourceLocation DAMAGE_INDICATOR_BACKGROUND_TEXTURE = new ResourceLocation(
+        MODID,
+        "textures/gui/damage_indicator_background.png");
+    private static final ResourceLocation DAMAGE_INDICATOR_HEALTH_TEXTURE = new ResourceLocation(
+        MODID,
+        "textures/gui/damage_indicator_health.png");
+    private static final Quaternionf ENTITY_ROTATION = (new Quaternionf())
+        .rotationXYZ((float) Math.toRadians(30), (float) Math.toRadians(130), (float) Math.PI);
 
     @Mod.EventHandler
     // preInit "Run before anything else. Read your config, create blocks, items, etc, and register them with the
