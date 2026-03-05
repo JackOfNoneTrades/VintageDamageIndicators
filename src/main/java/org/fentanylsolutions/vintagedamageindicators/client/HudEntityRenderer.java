@@ -16,6 +16,8 @@ import org.lwjgl.opengl.GL12;
 
 public final class HudEntityRenderer {
 
+    private static final String EYES_ENTITY_CLASS_NAME = "org.fentanylsolutions.eyesintheshadows.entity.entities.EntityEyes";
+
     private HudEntityRenderer() {}
 
     public static void drawEntity(int x, int y, float scale, float yawInput, float pitchInput, float rollInput,
@@ -105,9 +107,23 @@ public final class HudEntityRenderer {
             }
         }
 
+        HudPreviewWorld previewWorld = entity.worldObj instanceof HudPreviewWorld ? (HudPreviewWorld) entity.worldObj
+            : null;
+        boolean oldForceDark = previewWorld != null && previewWorld.isForceDark();
+        boolean shouldForceDark = previewWorld != null && shouldForceDarkPreview(entity);
+        if (previewWorld != null && oldForceDark != shouldForceDark) {
+            previewWorld.setForceDark(shouldForceDark);
+        }
+
         GL11.glTranslatef(0.0F, entity.yOffset, 0.0F);
         RenderManager.instance.playerViewY = 180.0F;
-        RenderManager.instance.renderEntityWithPosYaw(entity, 0.0D, 0.0D, 0.0D, 0.0F, 1.0F);
+        try {
+            RenderManager.instance.renderEntityWithPosYaw(entity, 0.0D, 0.0D, 0.0D, 0.0F, 1.0F);
+        } finally {
+            if (previewWorld != null && oldForceDark != shouldForceDark) {
+                previewWorld.setForceDark(oldForceDark);
+            }
+        }
         entity.renderYawOffset = oldRenderYawOffset;
         entity.rotationYaw = oldRotationYaw;
         entity.rotationPitch = oldRotationPitch;
@@ -139,5 +155,11 @@ public final class HudEntityRenderer {
         GL11.glDisable(GL11.GL_TEXTURE_2D);
         OpenGlHelper.setActiveTexture(OpenGlHelper.defaultTexUnit);
         GL11.glDisable(GL11.GL_COLOR_MATERIAL);
+    }
+
+    private static boolean shouldForceDarkPreview(EntityLivingBase entity) {
+        String className = entity.getClass()
+            .getName();
+        return EYES_ENTITY_CLASS_NAME.equals(className) || className.endsWith(".EntityEyes");
     }
 }
