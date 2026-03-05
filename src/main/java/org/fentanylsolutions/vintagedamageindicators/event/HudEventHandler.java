@@ -20,6 +20,7 @@ import net.minecraft.potion.PotionEffect;
 import net.minecraft.util.AxisAlignedBB;
 import net.minecraft.util.MovingObjectPosition;
 import net.minecraft.util.ResourceLocation;
+import net.minecraft.util.StatCollector;
 import net.minecraft.util.StringUtils;
 import net.minecraft.util.Vec3;
 import net.minecraftforge.client.event.RenderGameOverlayEvent;
@@ -295,7 +296,7 @@ public class HudEventHandler extends Gui {
         drawFrame(minecraft);
         drawMobTypeIcon(minecraft, mobType);
         drawHealthBar(minecraft, target);
-        drawName(minecraft.fontRenderer, target.getCommandSenderName());
+        drawName(minecraft.fontRenderer, resolveHudName(target));
         drawHealthText(minecraft.fontRenderer, target);
         drawPotionStrip(minecraft, minecraft.fontRenderer, potionStrip);
 
@@ -343,6 +344,13 @@ public class HudEventHandler extends Gui {
             return null;
         }
         return VintageDamageIndicators.varInstanceCommon.getEntityOverride(target.getClass());
+    }
+
+    private String resolveHudName(EntityLivingBase target) {
+        if (target == null) {
+            return "";
+        }
+        return StatCollector.translateToLocal(target.getCommandSenderName());
     }
 
     private void drawMobTypeIcon(Minecraft minecraft, MobTypes mobType) {
