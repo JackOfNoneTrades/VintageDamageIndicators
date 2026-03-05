@@ -15,6 +15,7 @@ import net.minecraft.util.MathHelper;
 import net.minecraftforge.event.entity.living.LivingEvent;
 
 import org.fentanylsolutions.vintagedamageindicators.Config;
+import org.fentanylsolutions.vintagedamageindicators.VintageDamageIndicators;
 import org.fentanylsolutions.vintagedamageindicators.client.HudPreviewParticles;
 import org.fentanylsolutions.vintagedamageindicators.rendering.DamageIndicatorParticle;
 
@@ -36,10 +37,15 @@ public class ParticleEventHandler {
                     .intValue()) != 0
                 && lastHealth != currentHealth) {
                 int damage = lastHealth - currentHealth;
+                boolean popoffEnabled = isPopoffEnabledFor(el);
                 if (Config.hudPreviewParticlesEnabled) {
-                    HudPreviewParticles.spawnDamage(el, damage);
+                    if (popoffEnabled) {
+                        HudPreviewParticles.spawnDamage(el, damage);
+                    } else {
+                        HudPreviewParticles.clear(el.getEntityId());
+                    }
                 }
-                if (Config.damageParticlesEnabled) {
+                if (Config.damageParticlesEnabled && popoffEnabled) {
                     DamageIndicatorParticle customParticle = new DamageIndicatorParticle(
                         Minecraft.getMinecraft().theWorld,
                         el.posX,
@@ -66,6 +72,9 @@ public class ParticleEventHandler {
     }
 
     public static void doCritical(Entity target) {
+        if (target instanceof EntityLivingBase && !isPopoffEnabledFor((EntityLivingBase) target)) {
+            return;
+        }
         if (Config.hudPreviewParticlesEnabled && Config.criticalParticlesEnabled) {
             HudPreviewParticles.spawnCritical(target);
         }
@@ -91,6 +100,13 @@ public class ParticleEventHandler {
             || Minecraft.getMinecraft().gameSettings.thirdPersonView != 0) {
             Minecraft.getMinecraft().effectRenderer.addEffect(customParticle);
         }
+    }
+
+    private static boolean isPopoffEnabledFor(EntityLivingBase entity) {
+        if (entity == null || VintageDamageIndicators.varInstanceCommon == null) {
+            return true;
+        }
+        return VintageDamageIndicators.varInstanceCommon.isPopoffEnabled(entity.getClass());
     }
 
     @SubscribeEvent

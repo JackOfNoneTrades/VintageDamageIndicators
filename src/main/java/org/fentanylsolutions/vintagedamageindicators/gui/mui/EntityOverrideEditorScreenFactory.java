@@ -31,6 +31,7 @@ import org.fentanylsolutions.vintagedamageindicators.VintageDamageIndicators;
 import org.fentanylsolutions.vintagedamageindicators.client.HudEntityRenderer;
 import org.fentanylsolutions.vintagedamageindicators.client.HudPreviewMath;
 import org.fentanylsolutions.vintagedamageindicators.client.HudPreviewWorld;
+import org.fentanylsolutions.vintagedamageindicators.client.PreviewEntityFactory;
 import org.fentanylsolutions.vintagedamageindicators.varinstances.VarInstanceCommon;
 import org.lwjgl.opengl.GL11;
 
@@ -280,6 +281,7 @@ public final class EntityOverrideEditorScreenFactory {
         }
 
         list.child(buildToggleRow("Enabled", state.enabledValue(), state::getEnabledLabel));
+        list.child(buildToggleRow("Popoff", state.popoffEnabledValue(), state::getPopoffEnabledLabel));
         list.child(buildToggleRow("Append Baby Name", state.appendBabyNameValue(), state::getAppendBabyNameLabel));
         list.child(buildTextRow("Name", textField(state.selectedNameValue(), false, 0.0D)));
 
@@ -692,6 +694,7 @@ public final class EntityOverrideEditorScreenFactory {
         private float previewPitch = Config.hudEntityPitch;
         private EntityLivingBase previewEntity;
         private String previewEntityClassName;
+        private boolean previewEntityCreationAttempted;
 
         private EditorState() {
             this.options = buildOptions();
@@ -846,6 +849,7 @@ public final class EntityOverrideEditorScreenFactory {
                 this.selectedIndex = index;
                 this.previewEntity = null;
                 this.previewEntityClassName = null;
+                this.previewEntityCreationAttempted = false;
             }
         }
 
@@ -920,9 +924,14 @@ public final class EntityOverrideEditorScreenFactory {
             }
 
             Minecraft minecraft = Minecraft.getMinecraft();
-            if (this.previewEntity == null || !option.className.equals(this.previewEntityClassName)) {
+            if (!option.className.equals(this.previewEntityClassName)) {
+                this.previewEntity = null;
+                this.previewEntityClassName = option.className;
+                this.previewEntityCreationAttempted = false;
+            }
+            if (this.previewEntity == null && !this.previewEntityCreationAttempted) {
                 this.previewEntity = createPreviewEntity(option, minecraft);
-                this.previewEntityClassName = this.previewEntity == null ? null : option.className;
+                this.previewEntityCreationAttempted = true;
             }
 
             applyPreviewChildState(this.previewEntity);
@@ -939,9 +948,8 @@ public final class EntityOverrideEditorScreenFactory {
                 world = HudPreviewWorld.INSTANCE;
             }
 
-            Object created = EntityList.createEntityByName(option.registryName, world);
-            if (created instanceof EntityLivingBase) {
-                EntityLivingBase entity = (EntityLivingBase) created;
+            EntityLivingBase entity = PreviewEntityFactory.create(option.registryName, world, "entity override editor");
+            if (entity != null) {
                 syncPreviewEntityPosition(entity, minecraft);
                 return entity;
             }
@@ -1023,6 +1031,10 @@ public final class EntityOverrideEditorScreenFactory {
             return getSelectedOverrideOrDefault().appendBabyName ? "Yes" : "No";
         }
 
+        private String getPopoffEnabledLabel() {
+            return getSelectedOverrideOrDefault().popoffEnabled ? "Enabled" : "Disabled";
+        }
+
         private IntValue.Dynamic previewChildValue() {
             return new IntValue.Dynamic(() -> this.previewChild ? 1 : 0, value -> this.previewChild = value != 0);
         }
@@ -1037,6 +1049,13 @@ public final class EntityOverrideEditorScreenFactory {
         private IntValue.Dynamic appendBabyNameValue() {
             return new IntValue.Dynamic(() -> getSelectedOverrideOrDefault().appendBabyName ? 1 : 0, value -> {
                 getOrCreateSelectedOverride().appendBabyName = value != 0;
+                flushChanges();
+            });
+        }
+
+        private IntValue.Dynamic popoffEnabledValue() {
+            return new IntValue.Dynamic(() -> getSelectedOverrideOrDefault().popoffEnabled ? 1 : 0, value -> {
+                getOrCreateSelectedOverride().popoffEnabled = value != 0;
                 flushChanges();
             });
         }

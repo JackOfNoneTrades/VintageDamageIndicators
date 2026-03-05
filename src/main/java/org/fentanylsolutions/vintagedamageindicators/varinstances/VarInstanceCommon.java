@@ -72,6 +72,14 @@ public class VarInstanceCommon {
         return entityOverridesByClassName.get(className);
     }
 
+    public boolean isPopoffEnabled(Class<?> entityClass) {
+        if (entityOverridesByClassName == null || entityClass == null) {
+            return true;
+        }
+        EntityOverride override = entityOverridesByClassName.get(entityClass.getName());
+        return override == null || override.popoffEnabled;
+    }
+
     public LinkedHashMap<String, EntityOverride> copyEntityOverridesByClassName() {
         LinkedHashMap<String, EntityOverride> copy = new LinkedHashMap<>();
         if (entityOverridesByClassName == null) {
@@ -170,17 +178,19 @@ public class VarInstanceCommon {
         public float pitchOffset;
         public float rollOffset;
         public MobTypes type;
+        public boolean popoffEnabled;
         public boolean enable;
 
         public EntityOverride() {
             this.type = MobTypes.UNKNOWN;
+            this.popoffEnabled = true;
             this.enable = true;
         }
 
         public EntityOverride(String className, String displayName, boolean appendBabyName, float babyScaleModifier,
             float babyScaleFactor, float scaleFactor, float sizeModifier, float xOffset, float yOffset,
             float babyXOffset, float babyYOffset, float yawOffset, float pitchOffset, float rollOffset, MobTypes type,
-            boolean enable) {
+            boolean popoffEnabled, boolean enable) {
             this.className = className;
             this.displayName = displayName;
             this.appendBabyName = appendBabyName;
@@ -196,6 +206,7 @@ public class VarInstanceCommon {
             this.pitchOffset = pitchOffset;
             this.rollOffset = rollOffset;
             this.type = type;
+            this.popoffEnabled = popoffEnabled;
             this.enable = enable;
         }
 
@@ -216,13 +227,14 @@ public class VarInstanceCommon {
             copy.pitchOffset = pitchOffset;
             copy.rollOffset = rollOffset;
             copy.type = type;
+            copy.popoffEnabled = popoffEnabled;
             copy.enable = enable;
             return copy;
         }
 
         public String serialize() {
             return String.format(
-                "[%s]: <Name>: %s, <Append Baby Name>: %b, <Baby Scale Modifier>: %f, <Baby Scale Factor>: %f, <Scale Factor>: %f, <Size Modifier>: %f, <X Offset>: %f, <Y Offset>: %f, <Baby X Offset>: %f, <Baby Y Offset>: %f, <Yaw Offset>: %f, <Pitch Offset>: %f, <Roll Offset>: %f, <Type>: %s, <Enable>: %b",
+                "[%s]: <Name>: %s, <Append Baby Name>: %b, <Baby Scale Modifier>: %f, <Baby Scale Factor>: %f, <Scale Factor>: %f, <Size Modifier>: %f, <X Offset>: %f, <Y Offset>: %f, <Baby X Offset>: %f, <Baby Y Offset>: %f, <Yaw Offset>: %f, <Pitch Offset>: %f, <Roll Offset>: %f, <Type>: %s, <Popoff>: %b, <Enable>: %b",
                 className,
                 displayName == null ? "" : displayName,
                 appendBabyName,
@@ -238,6 +250,7 @@ public class VarInstanceCommon {
                 pitchOffset,
                 rollOffset,
                 type.toString(),
+                popoffEnabled,
                 enable);
         }
 
@@ -324,6 +337,10 @@ public class VarInstanceCommon {
                     } catch (IllegalArgumentException ignored) {
                         //
                     }
+                } else if (part.startsWith("<Popoff>:")) {
+                    entity.popoffEnabled = Boolean.parseBoolean(
+                        part.substring("<Popoff>:".length())
+                            .trim());
                 } else if (part.startsWith("<Enable>:")) {
                     entity.enable = Boolean.parseBoolean(
                         part.substring("<Enable>:".length())
