@@ -821,12 +821,7 @@ public final class EntityOverrideEditorScreenFactory {
 
         private String getWindowTitle() {
             EntityOption option = getSelectedOption();
-            return getDisplayName(option) + " | " + getSimpleClassName(option.className);
-        }
-
-        private String getSimpleClassName(String className) {
-            int separator = className.lastIndexOf('.');
-            return separator >= 0 ? className.substring(separator + 1) : className;
+            return getDisplayName(option) + " | " + option.className;
         }
 
         private String getDisplayName(EntityOption option) {

@@ -6,7 +6,6 @@ import java.util.Set;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiButton;
 import net.minecraft.client.gui.GuiScreen;
-import net.minecraft.client.resources.I18n;
 import net.minecraftforge.common.config.ConfigElement;
 
 import org.fentanylsolutions.vintagedamageindicators.Config;
@@ -54,7 +53,7 @@ public class GuiFactory implements IModGuiFactory {
                 VintageDamageIndicators.MODID,
                 false,
                 false,
-                I18n.format("vintagedamageindicators.configgui.title"));
+                "Vintage Damage Indicators");
         }
 
         @Override
