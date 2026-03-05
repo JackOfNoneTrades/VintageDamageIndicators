@@ -401,6 +401,26 @@ public class Config {
         }
     }
 
+    public static void setHudLayout(float size, boolean alignLeft, boolean alignTop, int positionX, int positionY) {
+        hudIndicatorSize = size;
+        hudIndicatorAlignLeft = alignLeft;
+        hudIndicatorAlignTop = alignTop;
+        hudIndicatorPositionX = positionX;
+        hudIndicatorPositionY = positionY;
+        if (config != null) {
+            config.get(Categories.hudIndicator, "hudIndicatorSize", hudIndicatorSize)
+                .set((double) hudIndicatorSize);
+            config.get(Categories.hudIndicator, "hudIndicatorAlignLeft", hudIndicatorAlignLeft)
+                .set(hudIndicatorAlignLeft);
+            config.get(Categories.hudIndicator, "hudIndicatorAlignTop", hudIndicatorAlignTop)
+                .set(hudIndicatorAlignTop);
+            config.get(Categories.hudIndicator, "hudIndicatorPositionX", hudIndicatorPositionX)
+                .set(hudIndicatorPositionX);
+            config.get(Categories.hudIndicator, "hudIndicatorPositionY", hudIndicatorPositionY)
+                .set(hudIndicatorPositionY);
+        }
+    }
+
     public static void save() {
         if (config != null) {
             config.save();

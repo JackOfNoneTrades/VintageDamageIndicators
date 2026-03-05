@@ -1,5 +1,6 @@
 package org.fentanylsolutions.vintagedamageindicators.gui;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.Set;
 
@@ -44,6 +45,9 @@ public class GuiFactory implements IModGuiFactory {
     public static class ConfigGui extends GuiConfig {
 
         private static final int LOGO_PREVIEW_BUTTON_ID = 9107;
+        private static final int HUD_POSITION_BUTTON_ID = 9108;
+        private GuiButton logoPreviewButton;
+        private GuiButton hudPositionButton;
 
         public ConfigGui(GuiScreen parentScreen) {
             super(
@@ -59,19 +63,33 @@ public class GuiFactory implements IModGuiFactory {
         @Override
         public void initGui() {
             super.initGui();
-            this.buttonList.add(new GuiButton(LOGO_PREVIEW_BUTTON_ID, this.width - 18, 4, 14, 14, "L"));
+            this.logoPreviewButton = new GuiButton(LOGO_PREVIEW_BUTTON_ID, 4, 4, 14, 14, "L");
+            this.hudPositionButton = new GuiButton(HUD_POSITION_BUTTON_ID, 20, 4, 14, 14, "P");
+            this.buttonList.add(this.logoPreviewButton);
+            this.buttonList.add(this.hudPositionButton);
             VintageDamageIndicators.debug("Initializing config gui");
         }
 
         @Override
         public void drawScreen(int mouseX, int mouseY, float partialTicks) {
             super.drawScreen(mouseX, mouseY, partialTicks);
+            if (this.hudPositionButton != null && this.hudPositionButton.visible
+                && mouseX >= this.hudPositionButton.xPosition
+                && mouseX < this.hudPositionButton.xPosition + this.hudPositionButton.width
+                && mouseY >= this.hudPositionButton.yPosition
+                && mouseY < this.hudPositionButton.yPosition + this.hudPositionButton.height) {
+                this.drawHoveringText(Collections.singletonList("Position HUD"), mouseX, mouseY, this.fontRendererObj);
+            }
         }
 
         @Override
         protected void actionPerformed(GuiButton b) {
             if (b.id == LOGO_PREVIEW_BUTTON_ID) {
                 this.mc.displayGuiScreen(new LogoPreviewScreen(this));
+                return;
+            }
+            if (b.id == HUD_POSITION_BUTTON_ID) {
+                this.mc.displayGuiScreen(new HudPositionScreen(this));
                 return;
             }
             VintageDamageIndicators.debug("Config button id " + b.id + " pressed");
