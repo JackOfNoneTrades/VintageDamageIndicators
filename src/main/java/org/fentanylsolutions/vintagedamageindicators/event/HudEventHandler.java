@@ -493,11 +493,11 @@ public class HudEventHandler extends Gui {
             int textX = drawX;
 
             if (entry.potion != null) {
-                int iconIndex = entry.potion.getStatusIconIndex();
                 GL11.glColor4f(1.0F, 1.0F, 1.0F, 1.0F);
                 GL11.glEnable(GL11.GL_TEXTURE_2D);
                 minecraft.getTextureManager()
                     .bindTexture(INVENTORY_TEXTURE);
+                int iconIndex = entry.potion.getStatusIconIndex();
                 drawTexturedModalRect(
                     drawX,
                     POTION_PANEL_Y + POTION_ICON_Y,

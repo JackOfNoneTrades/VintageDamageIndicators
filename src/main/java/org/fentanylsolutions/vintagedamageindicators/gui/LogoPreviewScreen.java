@@ -10,7 +10,6 @@ import net.minecraft.client.gui.FontRenderer;
 import net.minecraft.client.gui.Gui;
 import net.minecraft.client.gui.GuiScreen;
 import net.minecraft.client.renderer.OpenGlHelper;
-import net.minecraft.entity.EntityList;
 import net.minecraft.entity.EntityLivingBase;
 import net.minecraft.potion.Potion;
 import net.minecraft.util.ResourceLocation;
@@ -23,6 +22,7 @@ import org.fentanylsolutions.vintagedamageindicators.VintageDamageIndicators;
 import org.fentanylsolutions.vintagedamageindicators.client.HudEntityRenderer;
 import org.fentanylsolutions.vintagedamageindicators.client.HudPreviewMath;
 import org.fentanylsolutions.vintagedamageindicators.client.HudPreviewWorld;
+import org.fentanylsolutions.vintagedamageindicators.client.PreviewEntityFactory;
 import org.lwjgl.input.Keyboard;
 import org.lwjgl.opengl.GL11;
 
@@ -30,12 +30,13 @@ public class LogoPreviewScreen extends GuiScreen {
 
     private static final int PREVIEW_BACKGROUND_COLOR = 0xFF252A34;
     private static final float PREVIEW_SCALE = 1.8F;
-    private static final String PREVIEW_ENTITY_ID = "Zombie";
+    private static final String PREVIEW_ENTITY_ID = "Creeper";
     private static final String PREVIEW_NAME_OVERRIDE = "Vintage Damage Indicators";
     private static final float PREVIEW_HEALTH_CURRENT = 18.0F;
     private static final float PREVIEW_HEALTH_MAX = 20.0F;
+    private static final String PREVIEW_HEALTH_TEXT_OVERRIDE = "Wait, didn't we already have these?";
     private static final boolean PREVIEW_SHOW_POTION_TIME = true;
-    private static final String[] PREVIEW_POTION_LIST = { "1,2400", "5,1200", "8,800" };
+    private static final String[] PREVIEW_POTION_LIST = { "28,2400", "29,1200" };
 
     private static final int PANEL_WIDTH = HudPreviewMath.PANEL_WIDTH;
     private static final int PANEL_HEIGHT = HudPreviewMath.PANEL_HEIGHT;
@@ -88,6 +89,7 @@ public class LogoPreviewScreen extends GuiScreen {
 
     private final GuiScreen parentScreen;
     private EntityLivingBase previewEntity;
+    private boolean previewEntityCreateAttempted;
     private List<PreviewPotionEntry> previewPotions = Collections.emptyList();
 
     public LogoPreviewScreen(GuiScreen parentScreen) {
@@ -97,6 +99,7 @@ public class LogoPreviewScreen extends GuiScreen {
     @Override
     public void initGui() {
         this.previewEntity = null;
+        this.previewEntityCreateAttempted = false;
         this.previewPotions = buildPotionEntries(this.fontRendererObj);
     }
 
@@ -157,6 +160,10 @@ public class LogoPreviewScreen extends GuiScreen {
             syncEntityPosition(this.previewEntity, minecraft);
             return this.previewEntity;
         }
+        if (this.previewEntityCreateAttempted) {
+            return null;
+        }
+        this.previewEntityCreateAttempted = true;
 
         World world = minecraft.theWorld;
         if (world == null && minecraft.thePlayer != null) {
@@ -166,12 +173,12 @@ public class LogoPreviewScreen extends GuiScreen {
             world = HudPreviewWorld.INSTANCE;
         }
 
-        Object created = EntityList.createEntityByName(PREVIEW_ENTITY_ID, world);
-        if (!(created instanceof EntityLivingBase)) {
+        EntityLivingBase created = PreviewEntityFactory.create(PREVIEW_ENTITY_ID, world, "logo preview screen");
+        if (created == null) {
             return null;
         }
 
-        this.previewEntity = (EntityLivingBase) created;
+        this.previewEntity = created;
         syncEntityPosition(this.previewEntity, minecraft);
         return this.previewEntity;
     }
@@ -286,19 +293,13 @@ public class LogoPreviewScreen extends GuiScreen {
     }
 
     private void drawHealthText(FontRenderer fontRenderer) {
-        String separator = Config.healthSeparator ? " | " : "/";
-        String healthText = formatHealth(PREVIEW_HEALTH_CURRENT) + separator + formatHealth(PREVIEW_HEALTH_MAX);
-        if (!Config.healthDecimals) {
-            healthText = (int) PREVIEW_HEALTH_CURRENT + separator + (int) PREVIEW_HEALTH_MAX;
-        }
-
-        int width = fontRenderer.getStringWidth(healthText);
+        int width = fontRenderer.getStringWidth(PREVIEW_HEALTH_TEXT_OVERRIDE);
         float textScale = Math.min(1.0F, HudPreviewMath.HEALTH_TEXT_MAX_WIDTH / (float) Math.max(width, 1));
         GL11.glPushMatrix();
         GL11.glTranslatef(HudPreviewMath.HEALTH_TEXT_CENTER_X, HudPreviewMath.HEALTH_TEXT_Y, 0.0F);
         GL11.glScalef(textScale, textScale, 1.0F);
         int drawX = -Math.round(width / 2.0F);
-        fontRenderer.drawString(healthText, drawX, 0, 0xFFFFFF);
+        fontRenderer.drawString(PREVIEW_HEALTH_TEXT_OVERRIDE, drawX, 0, 0xFFFFFF);
         GL11.glPopMatrix();
     }
 
@@ -362,12 +363,12 @@ public class LogoPreviewScreen extends GuiScreen {
             PreviewPotionEntry entry = this.previewPotions.get(index);
             int textX = drawX;
 
-            if (entry.potion != null) {
-                int iconIndex = entry.potion.getStatusIconIndex();
+            if (entry.hasIcon && entry.potion != null) {
                 GL11.glColor4f(1.0F, 1.0F, 1.0F, 1.0F);
                 GL11.glEnable(GL11.GL_TEXTURE_2D);
                 minecraft.getTextureManager()
                     .bindTexture(INVENTORY_TEXTURE);
+                int iconIndex = entry.potion.getStatusIconIndex();
                 drawTexturedModalRect(
                     drawX,
                     POTION_PANEL_Y + POTION_ICON_Y,
@@ -437,17 +438,24 @@ public class LogoPreviewScreen extends GuiScreen {
             }
 
             Potion potion = Potion.potionTypes[potionId];
-            if (potion == null || !potion.hasStatusIcon()) {
+            if (potion == null) {
                 continue;
             }
 
             String timeText = PREVIEW_SHOW_POTION_TIME ? StringUtils.ticksToElapsedTime(Math.max(0, durationTicks))
                 : "";
-            int width = POTION_ICON_SIZE;
+            boolean hasIcon = potion.hasStatusIcon();
+            int width = hasIcon ? POTION_ICON_SIZE : 0;
             if (PREVIEW_SHOW_POTION_TIME) {
-                width += POTION_TIME_GAP + fontRenderer.getStringWidth(timeText);
+                if (hasIcon) {
+                    width += POTION_TIME_GAP;
+                }
+                width += fontRenderer.getStringWidth(timeText);
             }
-            entries.add(new PreviewPotionEntry(potion, timeText, width, potion.id));
+            if (width <= 0) {
+                width = POTION_ICON_SIZE;
+            }
+            entries.add(new PreviewPotionEntry(potion, hasIcon, timeText, width, potion.id));
         }
 
         entries.sort(Comparator.comparingInt(entry -> entry.sortOrder));
@@ -462,24 +470,17 @@ public class LogoPreviewScreen extends GuiScreen {
         }
     }
 
-    private String formatHealth(float value) {
-        float rounded = Math.round(value * 5.0F) / 5.0F;
-        String text = Float.toString(rounded);
-        if (text.endsWith(".0")) {
-            return text.substring(0, text.length() - 2);
-        }
-        return text;
-    }
-
     private static final class PreviewPotionEntry {
 
         private final Potion potion;
+        private final boolean hasIcon;
         private final String timeText;
         private final int width;
         private final int sortOrder;
 
-        private PreviewPotionEntry(Potion potion, String timeText, int width, int sortOrder) {
+        private PreviewPotionEntry(Potion potion, boolean hasIcon, String timeText, int width, int sortOrder) {
             this.potion = potion;
+            this.hasIcon = hasIcon;
             this.timeText = timeText;
             this.width = width;
             this.sortOrder = sortOrder;
