@@ -116,7 +116,8 @@ public class HudEventHandler extends Gui {
 
         HudIndicatorState state = VintageDamageIndicators.varInstanceClient.hudIndicatorState;
         EntityLivingBase target = state.getTargetEntity();
-        if (target == null || target.isDead) {
+        if (target == null || target.isDead || !isHudEnabledFor(target)) {
+            state.clearTarget();
             return;
         }
 
@@ -171,6 +172,10 @@ public class HudEventHandler extends Gui {
 
     private void updateTargetState(float partialTicks) {
         HudIndicatorState state = VintageDamageIndicators.varInstanceClient.hudIndicatorState;
+        EntityLivingBase currentTarget = state.getTargetEntity();
+        if (currentTarget != null && !isHudEnabledFor(currentTarget)) {
+            state.clearTarget();
+        }
         EntityLivingBase target = findTarget(Config.maxDistance, partialTicks);
         if (target != null && !target.isDead && target.getHealth() > 0.0F) {
             state.setTarget(target, MobTypes.getTypeFor(target), Config.hudLingerTime, usesModelOnlyRender(target));
@@ -214,6 +219,9 @@ public class HudEventHandler extends Gui {
             if (!(candidate instanceof EntityLivingBase) || candidate.isInvisible() || candidate.isDead) {
                 continue;
             }
+            if (!isHudEnabledFor((EntityLivingBase) candidate)) {
+                continue;
+            }
 
             AxisAlignedBB candidateBox = candidate.boundingBox.expand(0.1D, 0.1D, 0.1D);
             MovingObjectPosition intercept = candidateBox.calculateIntercept(eyePosition, lookEnd);
@@ -240,6 +248,16 @@ public class HudEventHandler extends Gui {
             }
         }
         return false;
+    }
+
+    private boolean isHudEnabledFor(EntityLivingBase entity) {
+        if (entity == null || VintageDamageIndicators.varInstanceCommon == null) {
+            return true;
+        }
+        VarInstanceCommon.EntityOverride override = VintageDamageIndicators.varInstanceCommon.getEntityOverride(
+            entity.getClass()
+                .getName());
+        return override == null || override.enable;
     }
 
     private void clearTargetState() {
