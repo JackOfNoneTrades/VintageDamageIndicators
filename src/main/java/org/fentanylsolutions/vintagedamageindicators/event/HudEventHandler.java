@@ -211,7 +211,7 @@ public class HudEventHandler extends Gui {
         EntityLivingBase closestTarget = null;
 
         for (Entity candidate : candidates) {
-            if (!(candidate instanceof EntityLivingBase) || candidate.isInvisible() || !candidate.canBeCollidedWith()) {
+            if (!(candidate instanceof EntityLivingBase) || candidate.isInvisible() || candidate.isDead) {
                 continue;
             }
 
