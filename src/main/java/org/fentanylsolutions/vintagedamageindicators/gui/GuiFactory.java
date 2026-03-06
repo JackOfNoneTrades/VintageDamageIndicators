@@ -85,8 +85,7 @@ public class GuiFactory implements IModGuiFactory {
             if (b.id == 2000) {
                 /* Syncing config */
                 VintageDamageIndicators.debug("Saving config");
-                Config.getRawConfig()
-                    .save();
+                Config.save();
                 Config.loadConfig(VintageDamageIndicators.confFile);
             }
         }
