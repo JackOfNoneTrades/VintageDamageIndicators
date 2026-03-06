@@ -18,6 +18,7 @@ import net.minecraftforge.event.world.WorldEvent;
 
 import org.fentanylsolutions.vintagedamageindicators.Config;
 import org.fentanylsolutions.vintagedamageindicators.VintageDamageIndicators;
+import org.fentanylsolutions.vintagedamageindicators.client.HudEntityRenderer;
 import org.fentanylsolutions.vintagedamageindicators.client.HudPreviewParticles;
 import org.fentanylsolutions.vintagedamageindicators.rendering.DamageIndicatorParticle;
 
@@ -120,6 +121,7 @@ public class ParticleEventHandler {
     public void onWorldUnload(WorldEvent.Unload event) {
         if (event.world.isRemote) {
             DamageIndicatorParticle.clearAll();
+            HudEntityRenderer.clearRenderFailedCache();
             healths.clear();
             potionEffects.clear();
             enemies.clear();

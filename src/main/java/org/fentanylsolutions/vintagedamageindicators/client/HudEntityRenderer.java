@@ -1,5 +1,8 @@
 package org.fentanylsolutions.vintagedamageindicators.client;
 
+import java.util.HashSet;
+import java.util.Set;
+
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.OpenGlHelper;
 import net.minecraft.client.renderer.RenderHelper;
@@ -11,12 +14,19 @@ import net.minecraft.entity.EntityLivingBase;
 import net.minecraft.entity.boss.EntityDragon;
 import net.minecraft.world.World;
 
+import org.fentanylsolutions.vintagedamageindicators.VintageDamageIndicators;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL12;
 
 public final class HudEntityRenderer {
 
+    private static final Set<Class<?>> RENDER_FAILED_CLASSES = new HashSet<>();
+
     private HudEntityRenderer() {}
+
+    public static void clearRenderFailedCache() {
+        RENDER_FAILED_CLASSES.clear();
+    }
 
     public static void drawEntity(int x, int y, float scale, float yawInput, float pitchInput, float rollInput,
         EntityLivingBase entity) {
@@ -44,9 +54,11 @@ public final class HudEntityRenderer {
         int oldDragonRingBufferIndex = 0;
         double[][] oldDragonRingBuffer = null;
         double oldPosY = entity.posY;
+        EntityLivingBase oldRenderViewEntity = minecraft.renderViewEntity;
 
         EntityLivingBase viewLiving = minecraft.thePlayer != null ? minecraft.thePlayer : entity;
         Entity viewEntity = minecraft.renderViewEntity != null ? minecraft.renderViewEntity : viewLiving;
+        minecraft.renderViewEntity = viewLiving;
         World renderWorld = minecraft.theWorld != null ? minecraft.theWorld : entity.worldObj;
         renderManager.cacheActiveRenderInfo(
             renderWorld,
@@ -118,9 +130,20 @@ public final class HudEntityRenderer {
 
         GL11.glTranslatef(0.0F, entity.yOffset, 0.0F);
         RenderManager.instance.playerViewY = 180.0F;
+        PreviewRenderPatches.PatchState patchState = PreviewRenderPatches.applyPatches(entity);
         try {
-            RenderManager.instance.renderEntityWithPosYaw(entity, 0.0D, 0.0D, 0.0D, 0.0F, 1.0F);
+            if (!RENDER_FAILED_CLASSES.contains(entity.getClass())) {
+                RenderManager.instance.renderEntityWithPosYaw(entity, 0.0D, 0.0D, 0.0D, 0.0F, 1.0F);
+            }
+        } catch (Exception e) {
+            RENDER_FAILED_CLASSES.add(entity.getClass());
+            VintageDamageIndicators.LOG.warn(
+                "Preview render failed for {} ({}), skipping future attempts.",
+                entity.getClass()
+                    .getName(),
+                e.getMessage());
         } finally {
+            PreviewRenderPatches.revertPatches(entity, patchState);
             EyesCompatHelper.endPreviewRender(renderManager, entity, eyesPreviewState);
             if (previewWorld != null && oldForceDark != shouldForceDark) {
                 previewWorld.setForceDark(oldForceDark);
@@ -140,6 +163,7 @@ public final class HudEntityRenderer {
             }
         }
 
+        minecraft.renderViewEntity = oldRenderViewEntity;
         renderManager.worldObj = oldWorld;
         renderManager.renderEngine = oldRenderEngine;
         renderManager.options = oldOptions;
