@@ -1,6 +1,5 @@
 package org.fentanylsolutions.vintagedamageindicators.gui;
 
-import java.util.Collections;
 import java.util.List;
 import java.util.Set;
 
@@ -64,22 +63,10 @@ public class GuiFactory implements IModGuiFactory {
         public void initGui() {
             super.initGui();
             this.logoPreviewButton = new GuiButton(LOGO_PREVIEW_BUTTON_ID, 4, 4, 14, 14, "L");
-            this.hudPositionButton = new GuiButton(HUD_POSITION_BUTTON_ID, 20, 4, 14, 14, "P");
+            this.hudPositionButton = new GuiButton(HUD_POSITION_BUTTON_ID, 20, 4, 78, 14, "Position HUD");
             this.buttonList.add(this.logoPreviewButton);
             this.buttonList.add(this.hudPositionButton);
             VintageDamageIndicators.debug("Initializing config gui");
-        }
-
-        @Override
-        public void drawScreen(int mouseX, int mouseY, float partialTicks) {
-            super.drawScreen(mouseX, mouseY, partialTicks);
-            if (this.hudPositionButton != null && this.hudPositionButton.visible
-                && mouseX >= this.hudPositionButton.xPosition
-                && mouseX < this.hudPositionButton.xPosition + this.hudPositionButton.width
-                && mouseY >= this.hudPositionButton.yPosition
-                && mouseY < this.hudPositionButton.yPosition + this.hudPositionButton.height) {
-                this.drawHoveringText(Collections.singletonList("Position HUD"), mouseX, mouseY, this.fontRendererObj);
-            }
         }
 
         @Override
