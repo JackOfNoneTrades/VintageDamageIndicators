@@ -780,23 +780,18 @@ public final class EntityOverrideEditorScreenFactory {
                 return;
             }
 
-            for (String serialized : Config.entityOverrides) {
-                if (serialized == null || serialized.trim()
-                    .isEmpty()) {
+            for (VarInstanceCommon.EntityOverride override : Config.getEntityOverrides()) {
+                if (override == null || override.className == null
+                    || override.className.trim()
+                        .isEmpty()) {
                     continue;
                 }
-                try {
-                    VarInstanceCommon.EntityOverride override = VarInstanceCommon.EntityOverride
-                        .deserialize(serialized);
-                    if (override.className == null || override.className.isEmpty()) {
-                        addPreservedEntry(serialized);
-                    } else if (editableClassNames.contains(override.className)) {
-                        this.overridesByClassName.put(override.className, override.copy());
-                    } else {
-                        addPreservedEntry(serialized);
-                    }
-                } catch (RuntimeException e) {
-                    addPreservedEntry(serialized);
+                if (editableClassNames.contains(override.className)) {
+                    this.overridesByClassName.put(override.className, override.copy());
+                } else {
+                    addPreservedEntry(
+                        override.copy()
+                            .serialize());
                 }
             }
         }
@@ -813,15 +808,26 @@ public final class EntityOverrideEditorScreenFactory {
                 VintageDamageIndicators.varInstanceCommon
                     .replaceEntityOverrides(this.overridesByClassName, this.preservedEntries);
             } else {
-                List<String> serialized = new ArrayList<>();
+                List<VarInstanceCommon.EntityOverride> serialized = new ArrayList<>();
                 for (EntityOption option : this.options) {
                     VarInstanceCommon.EntityOverride override = this.overridesByClassName.get(option.className);
                     if (override != null) {
-                        serialized.add(override.serialize());
+                        serialized.add(override.copy());
                     }
                 }
-                serialized.addAll(this.preservedEntries);
-                Config.setEntityOverrides(serialized.toArray(new String[0]));
+                for (String preserved : this.preservedEntries) {
+                    if (preserved == null || preserved.trim()
+                        .isEmpty()) {
+                        continue;
+                    }
+                    VarInstanceCommon.EntityOverride parsed = VarInstanceCommon.EntityOverride.deserialize(preserved);
+                    if (parsed.className == null || parsed.className.trim()
+                        .isEmpty()) {
+                        continue;
+                    }
+                    serialized.add(parsed);
+                }
+                Config.setEntityOverrides(serialized);
             }
         }
 

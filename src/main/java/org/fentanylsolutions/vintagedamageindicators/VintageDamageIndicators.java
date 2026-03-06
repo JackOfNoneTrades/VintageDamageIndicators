@@ -67,7 +67,11 @@ public class VintageDamageIndicators {
         String debugVar = System.getenv("MCMODDING_DEBUG_MODE");
         DEBUG_MODE = debugVar != null;
         VintageDamageIndicators.LOG.info("Debugmode: {}", DEBUG_MODE);
-        confFile = event.getSuggestedConfigurationFile();
+        File configDir = new File(event.getModConfigurationDirectory(), MODID);
+        if (!configDir.exists() && !configDir.mkdirs()) {
+            LOG.warn("Could not create config directory: {}", configDir.getAbsolutePath());
+        }
+        confFile = new File(configDir, MODID + ".cfg");
         proxy.preInit(event);
     }
 

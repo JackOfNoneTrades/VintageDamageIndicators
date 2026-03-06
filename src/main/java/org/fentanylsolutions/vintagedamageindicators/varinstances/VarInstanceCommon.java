@@ -29,18 +29,14 @@ public class VarInstanceCommon {
         entityOverridesByClassName.clear();
         preservedEntityOverrideEntries.clear();
 
-        for (String s : Config.entityOverrides) {
-            if (s == null || s.trim()
-                .isEmpty()) {
+        for (EntityOverride source : Config.getEntityOverrides()) {
+            if (source == null || source.className == null
+                || source.className.trim()
+                    .isEmpty()) {
                 continue;
             }
+            EntityOverride eo = source.copy();
             try {
-                EntityOverride eo = EntityOverride.deserialize(s);
-                if (eo.className == null || eo.className.isEmpty()) {
-                    preservedEntityOverrideEntries.add(s);
-                    continue;
-                }
-
                 entityOverridesByClassName.put(eo.className, eo);
 
                 if (!eo.enable) {
@@ -49,11 +45,8 @@ public class VarInstanceCommon {
                 Class<?> cls = Class.forName(eo.className);
                 entityOverrides.put(cls, eo);
             } catch (ClassNotFoundException e) {
-                VintageDamageIndicators.debug("Skipping unknown override class: " + s);
-                preservedEntityOverrideEntries.add(s);
-            } catch (RuntimeException e) {
-                VintageDamageIndicators.debug("Skipping malformed entity override: " + s);
-                preservedEntityOverrideEntries.add(s);
+                VintageDamageIndicators.debug("Skipping unknown override class: " + eo.className);
+                preservedEntityOverrideEntries.add(eo.serialize());
             }
         }
     }
@@ -108,7 +101,7 @@ public class VarInstanceCommon {
         entityOverridesByClassName.clear();
         preservedEntityOverrideEntries.clear();
 
-        ArrayList<String> serialized = new ArrayList<>();
+        ArrayList<EntityOverride> toPersist = new ArrayList<>();
 
         if (overridesByClassName != null) {
             for (Map.Entry<String, EntityOverride> entry : overridesByClassName.entrySet()) {
@@ -125,7 +118,7 @@ public class VarInstanceCommon {
                 }
 
                 entityOverridesByClassName.put(stored.className, stored);
-                serialized.add(stored.serialize());
+                toPersist.add(stored.copy());
 
                 if (!stored.enable) {
                     continue;
@@ -135,18 +128,42 @@ public class VarInstanceCommon {
                     Class<?> cls = Class.forName(stored.className);
                     entityOverrides.put(cls, stored);
                 } catch (ClassNotFoundException e) {
-                    preservedEntityOverrideEntries.add(stored.serialize());
                     VintageDamageIndicators.debug("Skipping unknown override class while saving: " + stored.className);
                 }
             }
         }
 
         if (preservedEntries != null) {
-            preservedEntityOverrideEntries.addAll(preservedEntries);
-            serialized.addAll(preservedEntries);
+            for (String serialized : preservedEntries) {
+                if (serialized == null || serialized.trim()
+                    .isEmpty()) {
+                    continue;
+                }
+                EntityOverride parsed = EntityOverride.deserialize(serialized);
+                if (parsed.className == null || parsed.className.trim()
+                    .isEmpty()) {
+                    continue;
+                }
+                if (entityOverridesByClassName.containsKey(parsed.className)) {
+                    continue;
+                }
+                preservedEntityOverrideEntries.add(serialized);
+                entityOverridesByClassName.put(parsed.className, parsed);
+                toPersist.add(parsed.copy());
+                if (!parsed.enable) {
+                    continue;
+                }
+                try {
+                    Class<?> cls = Class.forName(parsed.className);
+                    entityOverrides.put(cls, parsed);
+                } catch (ClassNotFoundException e) {
+                    VintageDamageIndicators
+                        .debug("Skipping unknown preserved override class while saving: " + parsed.className);
+                }
+            }
         }
 
-        Config.setEntityOverrides(serialized.toArray(new String[0]));
+        Config.setEntityOverrides(toPersist);
     }
 
     private void ensureOverrideState() {

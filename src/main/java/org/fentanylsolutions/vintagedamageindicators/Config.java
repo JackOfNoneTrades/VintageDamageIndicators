@@ -1,12 +1,35 @@
 package org.fentanylsolutions.vintagedamageindicators;
 
 import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.io.OutputStream;
+import java.io.OutputStreamWriter;
+import java.io.Reader;
+import java.io.Writer;
+import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 
 import net.minecraftforge.common.config.Configuration;
+
+import org.fentanylsolutions.vintagedamageindicators.varinstances.VarInstanceCommon;
+
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
 
 public class Config {
 
     private static Configuration config;
+    private static final Gson OVERRIDES_GSON = new GsonBuilder().setPrettyPrinting()
+        .create();
+    private static final String OVERRIDES_RESOURCE_PATH = "/assets/vintagedamageindicators/defaults/overrides.json";
+    private static final String OVERRIDES_FILE_NAME = "overrides.json";
+    private static File overridesFile;
 
     // damage-particles
     public static boolean damageParticlesEnabled = true;
@@ -63,7 +86,7 @@ public class Config {
     public static boolean serverSendPotionDurationsToNonOps = true;
 
     // entity overrides
-    public static String[] entityOverrides = {};
+    private static List<VarInstanceCommon.EntityOverride> entityOverrides = new ArrayList<>();
 
     // debug
     public static boolean debugMode = false;
@@ -356,12 +379,11 @@ public class Config {
                 serverSendPotionDurationsToNonOps,
                 "Whether server-side VDI sends potion durations to non-op players.");
 
-            // entity overrides
-            entityOverrides = config.getStringList(
-                "entityOverrides",
+            config.get(
                 Categories.entityOverrides,
-                entityOverrides,
-                "Entity-specific render overrides.");
+                "overridesFile",
+                OVERRIDES_FILE_NAME,
+                "Entity override rules are stored as JSON in vintagedamageindicators/overrides.json.");
 
             // Debug
             debugMode = config.getBoolean("debugMode", Categories.debug, debugMode, "Enable debug logging");
@@ -375,6 +397,7 @@ public class Config {
             System.err.println("Error loading config: " + e.getMessage());
         } finally {
             config.save();
+            loadEntityOverrides(configFile);
         }
     }
 
@@ -382,11 +405,31 @@ public class Config {
         return config;
     }
 
-    public static void setEntityOverrides(String[] overrides) {
-        entityOverrides = overrides == null ? new String[0] : overrides;
-        if (config != null) {
-            config.get(Categories.entityOverrides, "entityOverrides", new String[0])
-                .set(entityOverrides);
+    public static List<VarInstanceCommon.EntityOverride> getEntityOverrides() {
+        if (entityOverrides.isEmpty()) {
+            return Collections.emptyList();
+        }
+        ArrayList<VarInstanceCommon.EntityOverride> copy = new ArrayList<>(entityOverrides.size());
+        for (VarInstanceCommon.EntityOverride override : entityOverrides) {
+            if (override != null) {
+                copy.add(override.copy());
+            }
+        }
+        return copy;
+    }
+
+    public static void setEntityOverrides(List<VarInstanceCommon.EntityOverride> overrides) {
+        entityOverrides = new ArrayList<>();
+        if (overrides == null) {
+            return;
+        }
+        for (VarInstanceCommon.EntityOverride override : overrides) {
+            if (override == null || override.className == null
+                || override.className.trim()
+                    .isEmpty()) {
+                continue;
+            }
+            entityOverrides.add(override.copy());
         }
     }
 
@@ -425,6 +468,7 @@ public class Config {
         if (config != null) {
             config.save();
         }
+        saveEntityOverrides();
     }
 
     public static boolean shouldSendPotionTypes(boolean operator) {
@@ -433,5 +477,86 @@ public class Config {
 
     public static boolean shouldSendPotionDurations(boolean operator) {
         return operator ? serverSendPotionDurationsToOps : serverSendPotionDurationsToNonOps;
+    }
+
+    private static void loadEntityOverrides(File configFile) {
+        File parent = configFile.getParentFile();
+        if (parent == null) {
+            return;
+        }
+        if (!parent.exists() && !parent.mkdirs()) {
+            VintageDamageIndicators.LOG.warn("Could not create config directory: {}", parent.getAbsolutePath());
+            entityOverrides = new ArrayList<>();
+            return;
+        }
+        overridesFile = new File(parent, OVERRIDES_FILE_NAME);
+        if (!overridesFile.exists()) {
+            copyDefaultOverridesFile(overridesFile);
+        }
+        entityOverrides = readEntityOverridesFile(overridesFile);
+    }
+
+    private static List<VarInstanceCommon.EntityOverride> readEntityOverridesFile(File file) {
+        if (file == null || !file.exists()) {
+            return new ArrayList<>();
+        }
+        try (Reader reader = new InputStreamReader(new FileInputStream(file), StandardCharsets.UTF_8)) {
+            VarInstanceCommon.EntityOverride[] parsed = OVERRIDES_GSON
+                .fromJson(reader, VarInstanceCommon.EntityOverride[].class);
+            if (parsed == null) {
+                return new ArrayList<>();
+            }
+            ArrayList<VarInstanceCommon.EntityOverride> loaded = new ArrayList<>();
+            for (VarInstanceCommon.EntityOverride override : parsed) {
+                if (override == null || override.className == null
+                    || override.className.trim()
+                        .isEmpty()) {
+                    continue;
+                }
+                loaded.add(override);
+            }
+            return loaded;
+        } catch (Exception e) {
+            VintageDamageIndicators.LOG.warn("Failed to read entity overrides JSON from {}", file.getAbsolutePath(), e);
+            return new ArrayList<>();
+        }
+    }
+
+    private static void saveEntityOverrides() {
+        if (overridesFile == null) {
+            return;
+        }
+        File parent = overridesFile.getParentFile();
+        if (parent != null && !parent.exists() && !parent.mkdirs()) {
+            VintageDamageIndicators.LOG.warn("Could not create config directory: {}", parent.getAbsolutePath());
+            return;
+        }
+        try (Writer writer = new OutputStreamWriter(new FileOutputStream(overridesFile), StandardCharsets.UTF_8)) {
+            OVERRIDES_GSON.toJson(entityOverrides, writer);
+        } catch (IOException e) {
+            VintageDamageIndicators.LOG
+                .warn("Failed to save entity overrides JSON to {}", overridesFile.getAbsolutePath(), e);
+        }
+    }
+
+    private static void copyDefaultOverridesFile(File destination) {
+        try (InputStream in = Config.class.getResourceAsStream(OVERRIDES_RESOURCE_PATH)) {
+            if (in == null) {
+                VintageDamageIndicators.LOG.warn("Default overrides resource not found: {}", OVERRIDES_RESOURCE_PATH);
+                entityOverrides = new ArrayList<>();
+                saveEntityOverrides();
+                return;
+            }
+            try (OutputStream out = new FileOutputStream(destination)) {
+                byte[] buffer = new byte[8192];
+                int read;
+                while ((read = in.read(buffer)) != -1) {
+                    out.write(buffer, 0, read);
+                }
+            }
+        } catch (IOException e) {
+            VintageDamageIndicators.LOG
+                .warn("Failed to copy default overrides JSON to {}", destination.getAbsolutePath(), e);
+        }
     }
 }
