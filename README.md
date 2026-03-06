@@ -5,12 +5,15 @@ Retro Damage Indicators backport with potion status support and damage particles
 ![logo](images/logo.png)
 
 [![hub](images/badges/github.png)](https://github.com/JackOfNoneTrades/OlderPingDisplay/releases)
+![forge](images/badges/forge.png)
+[![cord](images/badges/cord.png)](https://discord.gg/xAWCqGrguG)
+
+<!--
 [![modrinth](images/badges/modrinth.png)](https://modrinth.com/mod/olderpingdisplay)
 [![curse](images/badges/curse.png)](https://www.curseforge.com/minecraft/mc-mods/olderpingdisplay)
 [![mcmodcn](images/badges/mcmodcn.png)](https://www.mcmod.cn/class/24647.html)
 [![maven](images/badges/maven.png)](https://maven.fentanylsolutions.org/#/releases/org/fentanylsolutions/olderpingdisplay/OlderPingDisplay)
-![forge](images/badges/forge.png)
-[![cord](images/badges/cord.png)](https://discord.gg/xAWCqGrguG)
+-->
 
 ![golem](images/screenshots/golem.png)
 ![config](images/screenshots/config.png)
@@ -26,7 +29,7 @@ Most things are configurable.
 `./gradlew build`.
 
 ## Credits
-* [Retro Damage Indicators](https://github.com/vladmarica/better-ping-display-fabric)
+* [Retro Damage Indicators](https://github.com/vladmarica/better-ping-display-fabric) (Licensed under [GPLv3](https://www.curseforge.com/minecraft/mc-mods/retro-damage-indicators#license))
 * [GT:NH buildscript](https://github.com/GTNewHorizons/ExampleMod1.7.10)
 
 ## License
@@ -35,7 +38,7 @@ Most things are configurable.
 
 ## Buy me some creatine
 
-* [ko-fi.com](ko-fi.com/jackisasubtlejoke)
+* [ko-fi.com](https://ko-fi.com/jackisasubtlejoke)
 * Monero: `893tQ56jWt7czBsqAGPq8J5BDnYVCg2tvKpvwTcMY1LS79iDabopdxoUzNLEZtRTH4ewAcKLJ4DM4V41fvrJGHgeKArxwmJ`
 
 <br>
