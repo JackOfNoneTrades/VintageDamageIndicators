@@ -23,6 +23,7 @@ import net.minecraft.entity.EntityList;
 import net.minecraft.entity.EntityLivingBase;
 import net.minecraft.entity.monster.EntityZombie;
 import net.minecraft.util.ResourceLocation;
+import net.minecraft.util.StatCollector;
 import net.minecraft.world.World;
 
 import org.fentanylsolutions.vintagedamageindicators.Config;
@@ -167,7 +168,7 @@ public final class EntityOverrideEditorScreenFactory {
         leftFooter.height(LEFT_FOOTER_HEIGHT);
         panel.child(leftFooter);
 
-        ListWidget previewPane = buildPreviewPane(state);
+        Flow previewPane = buildPreviewPane(state);
         previewPane.left(rightColumnLeft);
         previewPane.top(CONTENT_TOP);
         previewPane.width(PREVIEW_COLUMN_WIDTH);
@@ -236,21 +237,24 @@ public final class EntityOverrideEditorScreenFactory {
     }
 
     @SuppressWarnings("rawtypes")
-    private static ListWidget buildPreviewPane(EditorState state) {
-        ListWidget list = new ListWidget();
+    private static Flow buildPreviewPane(EditorState state) {
+        Flow column = Flow.column()
+            .childPadding(0)
+            .background(IDrawable.EMPTY);
 
         if (state.options.isEmpty()) {
-            list.child(
+            column.child(
                 IKey.str("No entities are available for editing.")
                     .asWidget());
-            return list;
+            return column;
         }
 
-        list.child(
+        column.child(
             new PreviewDrawable(state).asWidget()
+                .background(IDrawable.EMPTY)
                 .width(HudPreviewMath.PANEL_WIDTH)
                 .height(HudPreviewMath.PANEL_HEIGHT));
-        return list;
+        return column;
     }
 
     private static Flow buildFixedEditorPane(EditorState state) {
@@ -511,7 +515,13 @@ public final class EntityOverrideEditorScreenFactory {
 
     private static final class PreviewDrawable extends Gui implements IDrawable {
 
-        private static final boolean DRAW_HUD_BACKGROUND = false;
+        private static final boolean DRAW_HUD_BACKGROUND = true;
+        private static final int NAME_UNDERLAY_X = HudPreviewMath.HEALTH_BAR_X + 1;
+        private static final int NAME_UNDERLAY_Y = 4;
+        private static final int NAME_UNDERLAY_WIDTH = HudPreviewMath.HEALTH_BAR_WIDTH - 2;
+        private static final int NAME_UNDERLAY_HEIGHT = 16;
+        private static final int NAME_UNDERLAY_RGB = 0x4F5560;
+        private static final float PREVIEW_BACKGROUND_ALPHA = 1.0F;
         private static final ResourceLocation BACKGROUND_TEXTURE = new ResourceLocation(
             VintageDamageIndicators.MODID,
             "textures/gui/damage_indicator_background.png");
@@ -556,10 +566,13 @@ public final class EntityOverrideEditorScreenFactory {
                 GL11.glColor4f(1.0F, 1.0F, 1.0F, 1.0F);
                 OpenGlHelper.setActiveTexture(OpenGlHelper.defaultTexUnit);
             }
+            if (!DRAW_HUD_BACKGROUND) {
+                drawNameUnderlay();
+            }
             drawFrame(minecraft);
             drawMobTypeIcon(minecraft, mobType);
             drawHealthBar(minecraft, entity);
-            drawName(minecraft.fontRenderer, this.state.getPreviewName());
+            drawName(minecraft.fontRenderer, this.state.getPreviewName(entity));
             drawHealthText(minecraft.fontRenderer, entity);
 
             GL11.glPopMatrix();
@@ -573,12 +586,24 @@ public final class EntityOverrideEditorScreenFactory {
         private void drawBackground(Minecraft minecraft) {
             minecraft.getTextureManager()
                 .bindTexture(BACKGROUND_TEXTURE);
+            GL11.glEnable(GL11.GL_TEXTURE_2D);
             GL11.glEnable(GL11.GL_BLEND);
             GL11.glBlendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA);
-            GL11.glColor4f(1.0F, 1.0F, 1.0F, Config.hudIndicatorBackgroundOpacity);
+            GL11.glColor4f(1.0F, 1.0F, 1.0F, PREVIEW_BACKGROUND_ALPHA);
             drawTexturedModalRect(0, 0, 0, 0, HudPreviewMath.PANEL_WIDTH, HudPreviewMath.PANEL_HEIGHT);
             GL11.glColor4f(1.0F, 1.0F, 1.0F, 1.0F);
             GL11.glDisable(GL11.GL_BLEND);
+        }
+
+        private void drawNameUnderlay() {
+            int alpha = Math.max(0, Math.min(255, Math.round(Config.hudIndicatorBackgroundOpacity * 255.0F)));
+            int color = (alpha << 24) | NAME_UNDERLAY_RGB;
+            drawRect(
+                NAME_UNDERLAY_X,
+                NAME_UNDERLAY_Y,
+                NAME_UNDERLAY_X + NAME_UNDERLAY_WIDTH,
+                NAME_UNDERLAY_Y + NAME_UNDERLAY_HEIGHT,
+                color);
         }
 
         private void drawFrame(Minecraft minecraft) {
@@ -828,13 +853,46 @@ public final class EntityOverrideEditorScreenFactory {
         }
 
         private String getDisplayName(EntityOption option) {
+            return getDisplayName(option, null);
+        }
+
+        private String getDisplayName(EntityOption option, EntityLivingBase entity) {
             VarInstanceCommon.EntityOverride override = this.overridesByClassName.get(option.className);
-            if (override != null && override.displayName != null
-                && !override.displayName.trim()
-                    .isEmpty()) {
+            if (hasCustomDisplayName(override, option)) {
                 return override.displayName;
             }
+            String localized = getLocalizedEntityName(entity, option.registryName);
+            if (!localized.isEmpty()) {
+                return localized;
+            }
             return option.registryName;
+        }
+
+        private boolean hasCustomDisplayName(VarInstanceCommon.EntityOverride override, EntityOption option) {
+            if (override == null || override.displayName == null) {
+                return false;
+            }
+            String trimmed = override.displayName.trim();
+            return !trimmed.isEmpty() && !trimmed.equals(option.registryName);
+        }
+
+        private String getLocalizedEntityName(EntityLivingBase entity, String fallback) {
+            if (entity != null) {
+                String localizedFromEntity = StatCollector.translateToLocal(entity.getCommandSenderName());
+                if (localizedFromEntity != null && !localizedFromEntity.trim()
+                    .isEmpty()) {
+                    return localizedFromEntity;
+                }
+            }
+            if (fallback != null && !fallback.trim()
+                .isEmpty()) {
+                String localizedFallback = StatCollector.translateToLocal(fallback);
+                if (localizedFallback != null && !localizedFallback.trim()
+                    .isEmpty()) {
+                    return localizedFallback;
+                }
+            }
+            return "";
         }
 
         private boolean isSelected(EntityOption option) {
@@ -896,8 +954,8 @@ public final class EntityOverrideEditorScreenFactory {
             flushChanges();
         }
 
-        private String getPreviewName() {
-            String name = getDisplayName(getSelectedOption());
+        private String getPreviewName(EntityLivingBase entity) {
+            String name = getDisplayName(getSelectedOption(), entity);
             if (this.previewChild && getSelectedOverrideOrDefault().appendBabyName) {
                 return "Baby " + name;
             }

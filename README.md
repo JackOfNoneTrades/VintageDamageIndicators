@@ -12,7 +12,10 @@ Retro Damage Indicators backport with potion status support and damage particles
 ![forge](images/badges/forge.png)
 [![cord](images/badges/cord.png)](https://discord.gg/xAWCqGrguG)
 
-SCREENSHOTS
+![golem](images/screenshots/golem.png)
+![config](images/screenshots/config.png)
+
+Most things are configurable.
 
 ## Dependencies
 * [UniMixins](https://modrinth.com/mod/unimixins) [![curse](images/icons/curse.png)](https://www.curseforge.com/minecraft/mc-mods/unimixins) [![modrinth](images/icons/modrinth.png)](https://modrinth.com/mod/unimixins/versions) [![git](images/icons/git.png)](https://github.com/LegacyModdingMC/UniMixins/releases)
