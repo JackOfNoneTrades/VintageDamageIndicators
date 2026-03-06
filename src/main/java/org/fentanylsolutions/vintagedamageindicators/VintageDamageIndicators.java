@@ -23,7 +23,13 @@ import cpw.mods.fml.common.event.FMLServerStartingEvent;
     name = "Vintage Damage Indicators",
     acceptedMinecraftVersions = "[1.7.10]",
     acceptableRemoteVersions = "*",
-    guiFactory = "org.fentanylsolutions.vintagedamageindicators.gui.GuiFactory")
+    guiFactory = "org.fentanylsolutions.vintagedamageindicators.gui.GuiFactory",
+    customProperties = { @Mod.CustomProperty(k = "license", v = "LGPLv3+SNEED"),
+        @Mod.CustomProperty(
+            k = "issueTrackerUrl",
+            v = "https://github.com/JackOfNoneTrades/VintageDamageIndicators/issues"),
+        @Mod.CustomProperty(k = "iconFile", v = "assets/vintagedamageindicators/icon.png"),
+        @Mod.CustomProperty(k = "backgroundFile", v = "assets/vintagedamageindicators/background.png") })
 public class VintageDamageIndicators {
 
     public static final String MODID = "vintagedamageindicators";
