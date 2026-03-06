@@ -12,7 +12,9 @@ import net.minecraft.entity.EntityLivingBase;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.potion.PotionEffect;
 import net.minecraft.util.MathHelper;
+import net.minecraftforge.client.event.RenderWorldLastEvent;
 import net.minecraftforge.event.entity.living.LivingEvent;
+import net.minecraftforge.event.world.WorldEvent;
 
 import org.fentanylsolutions.vintagedamageindicators.Config;
 import org.fentanylsolutions.vintagedamageindicators.VintageDamageIndicators;
@@ -107,6 +109,21 @@ public class ParticleEventHandler {
             return true;
         }
         return VintageDamageIndicators.varInstanceCommon.isPopoffEnabled(entity.getClass());
+    }
+
+    @SubscribeEvent
+    public void onRenderWorldLast(RenderWorldLastEvent event) {
+        DamageIndicatorParticle.renderAllParticles(event.partialTicks);
+    }
+
+    @SubscribeEvent
+    public void onWorldUnload(WorldEvent.Unload event) {
+        if (event.world.isRemote) {
+            DamageIndicatorParticle.clearAll();
+            healths.clear();
+            potionEffects.clear();
+            enemies.clear();
+        }
     }
 
     @SubscribeEvent

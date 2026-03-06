@@ -1,5 +1,9 @@
 package org.fentanylsolutions.vintagedamageindicators.rendering;
 
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.List;
+
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.FontRenderer;
 import net.minecraft.client.particle.EntityFX;
@@ -21,14 +25,13 @@ import cpw.mods.fml.relauncher.SideOnly;
 @SideOnly(Side.CLIENT)
 public class DamageIndicatorParticle extends EntityFX {
 
+    private static final List<DamageIndicatorParticle> ACTIVE_PARTICLES = new ArrayList<>();
+
     private boolean isCritical;
     private String particleText;
     private boolean isHeal;
     private int damage;
     private boolean doGrow;
-    private float locX;
-    private float locY;
-    private float locZ;
     public boolean renderOnTop;
     private float scale;
     private int color;
@@ -90,17 +93,23 @@ public class DamageIndicatorParticle extends EntityFX {
         int shadowColor_ = (0xFF << 24) | (r << 16) | (g << 8) | b;
         this.shadowColor = Util.applyAlpha(shadowColor_, Config.damageParticleTransparency);
         this.particleText = String.valueOf(this.damage);
+        ACTIVE_PARTICLES.add(this);
     }
 
+    @Override
     public void renderParticle(Tessellator p_renderParticle_1_, float par2, float par3, float par4, float par5,
         float par6, float par7) {
+        // No-op: rendering moved to renderAllParticles() called from RenderWorldLastEvent
+        // to bypass Iris/Angelica deferred shader pipeline dimming
+    }
+
+    private void doRender(float partialTicks) {
         this.rotationYaw = -Minecraft.getMinecraft().thePlayer.rotationYaw;
         this.rotationPitch = Minecraft.getMinecraft().thePlayer.rotationPitch;
-        float size = 0.1f * this.particleScale;
 
-        this.locX = (float) ((this.prevPosX + ((this.posX - this.prevPosX) * par2)) - interpPosX);
-        this.locY = (float) ((this.prevPosY + ((this.posY - this.prevPosY) * par2)) - interpPosY);
-        this.locZ = (float) ((this.prevPosZ + ((this.posZ - this.prevPosZ) * par2)) - interpPosZ);
+        float locX = (float) ((this.prevPosX + ((this.posX - this.prevPosX) * partialTicks)) - interpPosX);
+        float locY = (float) ((this.prevPosY + ((this.posY - this.prevPosY) * partialTicks)) - interpPosY);
+        float locZ = (float) ((this.prevPosZ + ((this.posZ - this.prevPosZ) * partialTicks)) - interpPosZ);
 
         GL11.glPushMatrix();
         if (this.renderOnTop) {
@@ -108,7 +117,7 @@ public class DamageIndicatorParticle extends EntityFX {
         } else {
             GL11.glDepthFunc(GL11.GL_LEQUAL);
         }
-        GL11.glTranslatef(this.locX, this.locY, this.locZ);
+        GL11.glTranslatef(locX, locY, locZ);
         GL11.glRotatef(this.rotationYaw, 0.0f, 1.0f, 0.0f);
         GL11.glRotatef(this.rotationPitch, 1.0f, 0.0f, 0.0f);
         GL11.glScalef(-1.0f, -1.0f, 1.0f);
@@ -146,15 +155,44 @@ public class DamageIndicatorParticle extends EntityFX {
         GL11.glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
         GL11.glDepthFunc(GL11.GL_LEQUAL);
         GL11.glPopMatrix();
+
         if (this.doGrow) {
             this.particleScale *= 1.08f;
             if (this.particleScale > this.scale * 3.0d) {
                 this.doGrow = false;
-                return;
             }
+        } else {
+            this.particleScale *= 0.96f;
+        }
+    }
+
+    public static void renderAllParticles(float partialTicks) {
+        if (ACTIVE_PARTICLES.isEmpty()) {
             return;
         }
-        this.particleScale *= 0.96f;
+
+        Iterator<DamageIndicatorParticle> it = ACTIVE_PARTICLES.iterator();
+        while (it.hasNext()) {
+            if (it.next().isDead) {
+                it.remove();
+            }
+        }
+
+        if (ACTIVE_PARTICLES.isEmpty()) {
+            return;
+        }
+
+        GL11.glPushAttrib(GL11.GL_ALL_ATTRIB_BITS);
+
+        for (DamageIndicatorParticle particle : ACTIVE_PARTICLES) {
+            particle.doRender(partialTicks);
+        }
+
+        GL11.glPopAttrib();
+    }
+
+    public static void clearAll() {
+        ACTIVE_PARTICLES.clear();
     }
 
     public int getFXLayer() {
