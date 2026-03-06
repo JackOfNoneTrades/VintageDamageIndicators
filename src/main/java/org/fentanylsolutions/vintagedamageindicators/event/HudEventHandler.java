@@ -32,6 +32,7 @@ import org.fentanylsolutions.vintagedamageindicators.client.HudEntityRenderer;
 import org.fentanylsolutions.vintagedamageindicators.client.HudIndicatorState;
 import org.fentanylsolutions.vintagedamageindicators.client.HudPreviewMath;
 import org.fentanylsolutions.vintagedamageindicators.client.HudPreviewParticles;
+import org.fentanylsolutions.vintagedamageindicators.client.PreviewRenderPatches;
 import org.fentanylsolutions.vintagedamageindicators.network.ClientPotionEffectsCache;
 import org.fentanylsolutions.vintagedamageindicators.network.EntityPotionEffectsMessage;
 import org.fentanylsolutions.vintagedamageindicators.varinstances.VarInstanceCommon;
@@ -178,6 +179,7 @@ public class HudEventHandler extends Gui {
             state.clearTarget();
         }
         EntityLivingBase target = findTarget(Config.maxDistance, partialTicks);
+        target = PreviewRenderPatches.resolveHudTarget(target);
         if (target != null && !target.isDead && target.getHealth() > 0.0F) {
             state.setTarget(target, MobTypes.getTypeFor(target), Config.hudLingerTime, usesModelOnlyRender(target));
             return;

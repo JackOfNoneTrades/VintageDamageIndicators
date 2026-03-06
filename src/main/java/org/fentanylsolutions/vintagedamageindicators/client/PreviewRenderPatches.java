@@ -110,6 +110,21 @@ public final class PreviewRenderPatches {
     }
 
     /**
+     * Redirect a HUD target entity to a more appropriate entity for display. For example, a Hydra neck entity redirects
+     * to its parent Hydra body. Returns the original entity if no redirect applies.
+     */
+    public static EntityLivingBase resolveHudTarget(EntityLivingBase entity) {
+        if (!initialized) init();
+
+        if (twilightForestLoaded) {
+            EntityLivingBase resolved = TwilightForestBridge.resolveHudTarget(entity);
+            if (resolved != null) return resolved;
+        }
+
+        return entity;
+    }
+
+    /**
      * Adjust a freshly-created preview entity to match in-game dimensions. Some entities only set their size in
      * constructors that require a parent entity, so the World-only constructor leaves default dimensions.
      */
@@ -195,6 +210,8 @@ public final class PreviewRenderPatches {
 
         private static Class<?> hydraClass;
         private static Class<?> hydraPartClass;
+        private static Class<?> hydraNeckClass;
+        private static Field hydraObjField;
         private static Field hydraHcField;
         private static Method shouldRenderHeadMethod;
         private static ModelRenderer[] headParts;
@@ -206,6 +223,14 @@ public final class PreviewRenderPatches {
         static void init() {
             hydraClass = tryLoadClass("twilightforest.entity.boss.EntityTFHydra");
             hydraPartClass = tryLoadClass("twilightforest.entity.boss.EntityTFHydraPart");
+            hydraNeckClass = tryLoadClass("twilightforest.entity.boss.EntityTFHydraNeck");
+            if (hydraPartClass != null) {
+                try {
+                    hydraObjField = hydraPartClass.getField("hydraObj");
+                } catch (NoSuchFieldException e) {
+                    VintageDamageIndicators.LOG.warn("EntityTFHydraPart.hydraObj field not found.", e);
+                }
+            }
             if (hydraClass == null) return;
 
             try {
@@ -238,6 +263,18 @@ public final class PreviewRenderPatches {
                 VintageDamageIndicators.LOG.warn("Failed to init Twilight Forest Hydra bridge.", e);
                 hydraClass = null;
             }
+        }
+
+        static EntityLivingBase resolveHudTarget(EntityLivingBase entity) {
+            if (hydraNeckClass != null && hydraNeckClass.isInstance(entity) && hydraObjField != null) {
+                try {
+                    Object hydra = hydraObjField.get(entity);
+                    if (hydra instanceof EntityLivingBase) {
+                        return (EntityLivingBase) hydra;
+                    }
+                } catch (IllegalAccessException ignored) {}
+            }
+            return null;
         }
 
         static void adjustPreviewEntity(EntityLivingBase entity) {
