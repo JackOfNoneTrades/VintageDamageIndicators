@@ -511,6 +511,7 @@ public final class EntityOverrideEditorScreenFactory {
 
     private static final class PreviewDrawable extends Gui implements IDrawable {
 
+        private static final boolean DRAW_HUD_BACKGROUND = false;
         private static final ResourceLocation BACKGROUND_TEXTURE = new ResourceLocation(
             VintageDamageIndicators.MODID,
             "textures/gui/damage_indicator_background.png");
@@ -540,7 +541,9 @@ public final class EntityOverrideEditorScreenFactory {
             VarInstanceCommon.EntityOverride override = this.state.getPreviewOverride();
             MobTypes mobType = this.state.getPreviewMobType(entity);
 
-            drawBackground(minecraft);
+            if (DRAW_HUD_BACKGROUND) {
+                drawBackground(minecraft);
+            }
             if (entity != null) {
                 HudPreviewMath.PreviewSettings preview = HudPreviewMath
                     .resolvePreviewSettings(entity, override, this.state.previewYaw, this.state.previewPitch);
