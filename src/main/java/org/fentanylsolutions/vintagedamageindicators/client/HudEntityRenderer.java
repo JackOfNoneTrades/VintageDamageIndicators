@@ -99,24 +99,30 @@ public final class HudEntityRenderer {
         GL11.glEnable(GL11.GL_COLOR_MATERIAL);
         GL11.glEnable(GL12.GL_RESCALE_NORMAL);
         GL11.glColor4f(1.0F, 1.0F, 1.0F, 1.0F);
-        // Read the current modelview to compute absolute screen position (includes GUI
-        // widget offsets and the -2000 Z translation). We then replace the modelview with
-        // glLoadIdentity so the projection scale only affects our known coordinates,
-        // not the GUI's pre-existing transforms.
+        // Read the current modelview to compute absolute screen position. The modelview may
+        // contain GUI widget offsets, a HUD scale, and the -2000 Z translation. We transform
+        // the point (x, y, 50) through the full matrix to get absolute coordinates, then
+        // replace the modelview with glLoadIdentity so the projection scale only affects our
+        // known coordinates, not the GUI's pre-existing transforms.
         MATRIX_BUF.clear();
         GL11.glGetFloat(GL11.GL_MODELVIEW_MATRIX, MATRIX_BUF);
-        float absX = MATRIX_BUF.get(12) + x;
-        float absY = MATRIX_BUF.get(13) + y;
-        float absZ = MATRIX_BUF.get(14) + 50.0F;
+        float absX = MATRIX_BUF.get(0) * x + MATRIX_BUF.get(4) * y + MATRIX_BUF.get(8) * 50.0F + MATRIX_BUF.get(12);
+        float absY = MATRIX_BUF.get(1) * x + MATRIX_BUF.get(5) * y + MATRIX_BUF.get(9) * 50.0F + MATRIX_BUF.get(13);
+        float absZ = MATRIX_BUF.get(2) * x + MATRIX_BUF.get(6) * y + MATRIX_BUF.get(10) * 50.0F + MATRIX_BUF.get(14);
+        // Extract pre-existing XY scale from the modelview (e.g. HUD indicator size) so
+        // the entity renders at the correct size within the GUI's coordinate space.
+        float mvScale = (float) Math
+            .sqrt(MATRIX_BUF.get(0) * MATRIX_BUF.get(0) + MATRIX_BUF.get(1) * MATRIX_BUF.get(1));
+        float effectiveScale = scale * mvScale;
         // Apply scale via projection matrix so renderers that strip modelview rotations
         // (billboard-style rendering) still render at the correct size.
         GL11.glMatrixMode(GL11.GL_PROJECTION);
         GL11.glPushMatrix();
-        GL11.glScalef(scale, scale, 1.0F);
+        GL11.glScalef(effectiveScale, effectiveScale, 1.0F);
         GL11.glMatrixMode(GL11.GL_MODELVIEW);
         GL11.glPushMatrix();
         GL11.glLoadIdentity();
-        GL11.glTranslatef(absX / scale, absY / scale, absZ);
+        GL11.glTranslatef(absX / effectiveScale, absY / effectiveScale, absZ);
         GL11.glScalef(-1.0F, 1.0F, 1.0F);
         GL11.glRotatef(180.0F, 0.0F, 0.0F, 1.0F);
         GL11.glRotatef(135.0F, 0.0F, 1.0F, 0.0F);
@@ -189,6 +195,7 @@ public final class HudEntityRenderer {
             if (!RENDER_FAILED_CLASSES.contains(entity.getClass())) {
                 RenderManager.instance.renderEntityWithPosYaw(entity, 0.0D, 0.0D, 0.0D, 0.0F, 1.0F);
             }
+            PreviewRenderPatches.renderPostEffects(entity, noWorld);
         } catch (Exception e) {
             RENDER_FAILED_CLASSES.add(entity.getClass());
             VintageDamageIndicators.LOG.warn(

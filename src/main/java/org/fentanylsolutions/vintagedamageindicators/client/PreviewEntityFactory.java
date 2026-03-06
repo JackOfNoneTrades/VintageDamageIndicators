@@ -37,6 +37,7 @@ public final class PreviewEntityFactory {
                             e);
                     }
                 }
+                PreviewRenderPatches.adjustPreviewEntity((EntityLivingBase) created);
                 return (EntityLivingBase) created;
             }
 
