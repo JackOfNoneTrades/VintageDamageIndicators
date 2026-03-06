@@ -3,6 +3,7 @@ package org.fentanylsolutions.vintagedamageindicators.client;
 import java.lang.reflect.Constructor;
 
 import net.minecraft.entity.EntityList;
+import net.minecraft.entity.EntityLiving;
 import net.minecraft.entity.EntityLivingBase;
 import net.minecraft.world.World;
 
@@ -25,6 +26,17 @@ public final class PreviewEntityFactory {
             Constructor<?> constructor = entityClass.getConstructor(World.class);
             Object created = constructor.newInstance(world);
             if (created instanceof EntityLivingBase) {
+                if (created instanceof EntityLiving living) {
+                    try {
+                        living.onSpawnWithEgg(null);
+                    } catch (Exception e) {
+                        VintageDamageIndicators.LOG.debug(
+                            "onSpawnWithEgg failed for preview entity '{}' in {}, continuing without spawn init.",
+                            registryName,
+                            context,
+                            e);
+                    }
+                }
                 return (EntityLivingBase) created;
             }
 

@@ -2,8 +2,11 @@ package org.fentanylsolutions.vintagedamageindicators.client;
 
 import java.util.HashSet;
 import java.util.Set;
+import java.util.UUID;
 
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.entity.EntityOtherPlayerMP;
+import net.minecraft.client.renderer.ActiveRenderInfo;
 import net.minecraft.client.renderer.OpenGlHelper;
 import net.minecraft.client.renderer.RenderHelper;
 import net.minecraft.client.renderer.entity.RenderManager;
@@ -12,17 +15,33 @@ import net.minecraft.client.settings.GameSettings;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityLivingBase;
 import net.minecraft.entity.boss.EntityDragon;
+import net.minecraft.util.MathHelper;
 import net.minecraft.world.World;
 
 import org.fentanylsolutions.vintagedamageindicators.VintageDamageIndicators;
+import org.lwjgl.BufferUtils;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL12;
+
+import com.mojang.authlib.GameProfile;
 
 public final class HudEntityRenderer {
 
     private static final Set<Class<?>> RENDER_FAILED_CLASSES = new HashSet<>();
+    private static final GameProfile DUMMY_PROFILE = new GameProfile(
+        UUID.fromString("00000000-0000-0000-0000-000000000000"),
+        "PreviewDummy");
+    private static final java.nio.FloatBuffer MATRIX_BUF = BufferUtils.createFloatBuffer(16);
+    private static EntityOtherPlayerMP dummyPlayer;
 
     private HudEntityRenderer() {}
+
+    private static EntityLivingBase getOrCreateDummyPlayer(World world) {
+        if (dummyPlayer == null || dummyPlayer.worldObj != world) {
+            dummyPlayer = new EntityOtherPlayerMP(world, DUMMY_PROFILE);
+        }
+        return dummyPlayer;
+    }
 
     public static void clearRenderFailedCache() {
         RENDER_FAILED_CLASSES.clear();
@@ -56,10 +75,11 @@ public final class HudEntityRenderer {
         double oldPosY = entity.posY;
         EntityLivingBase oldRenderViewEntity = minecraft.renderViewEntity;
 
-        EntityLivingBase viewLiving = minecraft.thePlayer != null ? minecraft.thePlayer : entity;
+        World renderWorld = minecraft.theWorld != null ? minecraft.theWorld : entity.worldObj;
+        EntityLivingBase viewLiving = minecraft.thePlayer != null ? minecraft.thePlayer
+            : getOrCreateDummyPlayer(renderWorld);
         Entity viewEntity = minecraft.renderViewEntity != null ? minecraft.renderViewEntity : viewLiving;
         minecraft.renderViewEntity = viewLiving;
-        World renderWorld = minecraft.theWorld != null ? minecraft.theWorld : entity.worldObj;
         renderManager.cacheActiveRenderInfo(
             renderWorld,
             minecraft.getTextureManager(),
@@ -79,9 +99,25 @@ public final class HudEntityRenderer {
         GL11.glEnable(GL11.GL_COLOR_MATERIAL);
         GL11.glEnable(GL12.GL_RESCALE_NORMAL);
         GL11.glColor4f(1.0F, 1.0F, 1.0F, 1.0F);
+        // Read the current modelview to compute absolute screen position (includes GUI
+        // widget offsets and the -2000 Z translation). We then replace the modelview with
+        // glLoadIdentity so the projection scale only affects our known coordinates,
+        // not the GUI's pre-existing transforms.
+        MATRIX_BUF.clear();
+        GL11.glGetFloat(GL11.GL_MODELVIEW_MATRIX, MATRIX_BUF);
+        float absX = MATRIX_BUF.get(12) + x;
+        float absY = MATRIX_BUF.get(13) + y;
+        float absZ = MATRIX_BUF.get(14) + 50.0F;
+        // Apply scale via projection matrix so renderers that strip modelview rotations
+        // (billboard-style rendering) still render at the correct size.
+        GL11.glMatrixMode(GL11.GL_PROJECTION);
         GL11.glPushMatrix();
-        GL11.glTranslatef(x, y, 50.0F);
-        GL11.glScalef(-scale, scale, scale);
+        GL11.glScalef(scale, scale, 1.0F);
+        GL11.glMatrixMode(GL11.GL_MODELVIEW);
+        GL11.glPushMatrix();
+        GL11.glLoadIdentity();
+        GL11.glTranslatef(absX / scale, absY / scale, absZ);
+        GL11.glScalef(-1.0F, 1.0F, 1.0F);
         GL11.glRotatef(180.0F, 0.0F, 0.0F, 1.0F);
         GL11.glRotatef(135.0F, 0.0F, 1.0F, 0.0F);
         RenderHelper.enableStandardItemLighting();
@@ -130,7 +166,25 @@ public final class HudEntityRenderer {
 
         GL11.glTranslatef(0.0F, entity.yOffset, 0.0F);
         RenderManager.instance.playerViewY = 180.0F;
-        PreviewRenderPatches.PatchState patchState = PreviewRenderPatches.applyPatches(entity);
+
+        float oldRotationX = ActiveRenderInfo.rotationX;
+        float oldRotationZ = ActiveRenderInfo.rotationZ;
+        float oldRotationYZ = ActiveRenderInfo.rotationYZ;
+        float oldRotationXY = ActiveRenderInfo.rotationXY;
+        float oldRotationXZ = ActiveRenderInfo.rotationXZ;
+        float previewYaw = 180.0F;
+        float previewPitch = 0.0F;
+        ActiveRenderInfo.rotationX = MathHelper.cos(previewYaw * (float) Math.PI / 180.0F);
+        ActiveRenderInfo.rotationZ = MathHelper.sin(previewYaw * (float) Math.PI / 180.0F);
+        ActiveRenderInfo.rotationYZ = -ActiveRenderInfo.rotationZ
+            * MathHelper.sin(previewPitch * (float) Math.PI / 180.0F);
+        ActiveRenderInfo.rotationXY = ActiveRenderInfo.rotationX
+            * MathHelper.sin(previewPitch * (float) Math.PI / 180.0F);
+        ActiveRenderInfo.rotationXZ = MathHelper.cos(previewPitch * (float) Math.PI / 180.0F);
+
+        boolean noWorld = minecraft.theWorld == null;
+        PreviewRenderPatches.PatchState patchState = PreviewRenderPatches.applyPatches(entity, noWorld);
+        GL11.glDisable(GL11.GL_CULL_FACE);
         try {
             if (!RENDER_FAILED_CLASSES.contains(entity.getClass())) {
                 RenderManager.instance.renderEntityWithPosYaw(entity, 0.0D, 0.0D, 0.0D, 0.0F, 1.0F);
@@ -138,11 +192,12 @@ public final class HudEntityRenderer {
         } catch (Exception e) {
             RENDER_FAILED_CLASSES.add(entity.getClass());
             VintageDamageIndicators.LOG.warn(
-                "Preview render failed for {} ({}), skipping future attempts.",
+                "Preview render failed for {}, skipping future attempts.",
                 entity.getClass()
                     .getName(),
-                e.getMessage());
+                e);
         } finally {
+            GL11.glEnable(GL11.GL_CULL_FACE);
             PreviewRenderPatches.revertPatches(entity, patchState);
             EyesCompatHelper.endPreviewRender(renderManager, entity, eyesPreviewState);
             if (previewWorld != null && oldForceDark != shouldForceDark) {
@@ -163,6 +218,11 @@ public final class HudEntityRenderer {
             }
         }
 
+        ActiveRenderInfo.rotationX = oldRotationX;
+        ActiveRenderInfo.rotationZ = oldRotationZ;
+        ActiveRenderInfo.rotationYZ = oldRotationYZ;
+        ActiveRenderInfo.rotationXY = oldRotationXY;
+        ActiveRenderInfo.rotationXZ = oldRotationXZ;
         minecraft.renderViewEntity = oldRenderViewEntity;
         renderManager.worldObj = oldWorld;
         renderManager.renderEngine = oldRenderEngine;
@@ -175,6 +235,9 @@ public final class HudEntityRenderer {
         renderManager.playerViewX = oldPlayerViewX;
         renderManager.playerViewY = oldPlayerViewY;
         GL11.glPopMatrix();
+        GL11.glMatrixMode(GL11.GL_PROJECTION);
+        GL11.glPopMatrix();
+        GL11.glMatrixMode(GL11.GL_MODELVIEW);
         RenderHelper.disableStandardItemLighting();
         GL11.glDisable(GL12.GL_RESCALE_NORMAL);
         OpenGlHelper.setActiveTexture(OpenGlHelper.lightmapTexUnit);
