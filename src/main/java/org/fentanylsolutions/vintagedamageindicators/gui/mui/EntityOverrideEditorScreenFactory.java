@@ -324,8 +324,8 @@ public final class EntityOverrideEditorScreenFactory {
                 .height(18)
                 .value(state.typeValue())
                 .options(MobTypes.values())
-                .maxVerticalMenuSize(160)
-                .directionDown()
+                // Keep the menu short enough to avoid viewport clipping on smaller 1.7.10 GUI scales.
+                .maxVerticalMenuSize(96)
                 .optionToWidget((type, forSelectedDisplay) -> buildDropdownLabel(formatMobType(type)));
 
         CycleButtonWidget previewToggle = new CycleButtonWidget().stateCount(2)
