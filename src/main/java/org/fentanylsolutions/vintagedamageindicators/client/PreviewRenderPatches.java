@@ -39,6 +39,7 @@ public final class PreviewRenderPatches {
     private static Class<?> cultistPortalClass;
     private static Class<?> taintSporeClass;
     private static Field taintSporeDisplaySizeField;
+    private static Class<?> taintacleClass;
     private static Class<?> mindSpiderClass;
 
     // Twilight Forest
@@ -53,6 +54,7 @@ public final class PreviewRenderPatches {
             eldritchGuardianClass = tryLoadClass("thaumcraft.common.entities.monster.EntityEldritchGuardian");
             cultistPortalClass = tryLoadClass("thaumcraft.common.entities.monster.boss.EntityCultistPortal");
             taintSporeClass = tryLoadClass("thaumcraft.common.entities.monster.EntityTaintSpore");
+            taintacleClass = tryLoadClass("thaumcraft.common.entities.monster.EntityTaintacle");
             mindSpiderClass = tryLoadClass("thaumcraft.common.entities.monster.EntityMindSpider");
             if (taintSporeClass != null) {
                 try {
@@ -199,6 +201,14 @@ public final class PreviewRenderPatches {
                 && entity.ticksExisted < MIND_SPIDER_FADE_TICKS) {
                 oldTicks = entity.ticksExisted;
                 entity.ticksExisted = MIND_SPIDER_FADE_TICKS;
+            }
+
+            if (taintacleClass != null && taintacleClass.isInstance(entity)) {
+                int emergeTicks = Math.max(1, Math.round(entity.height * 10.0F));
+                if (entity.ticksExisted < emergeTicks) {
+                    oldTicks = entity.ticksExisted;
+                    entity.ticksExisted = emergeTicks;
+                }
             }
 
             if (taintSporeClass != null && taintSporeClass.isInstance(entity)) {

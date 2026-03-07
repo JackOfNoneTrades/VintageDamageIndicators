@@ -665,6 +665,25 @@
     "enable": true
   },
   {
+    "className": "thaumcraft.common.entities.monster.boss.EntityTaintacleGiant",
+    "displayName": "Thaumcraft.TaintacleGiant",
+    "appendBabyName": false,
+    "babyScaleModifier": 0.0,
+    "babyScaleFactor": 0.0,
+    "scaleFactor": 0.0,
+    "sizeModifier": 0.0,
+    "xOffset": 0.0,
+    "yOffset": -55.0,
+    "babyXOffset": 0.0,
+    "babyYOffset": 0.0,
+    "yawOffset": 0.0,
+    "pitchOffset": 0.0,
+    "rollOffset": 0.0,
+    "type": "BOSS",
+    "popoffEnabled": true,
+    "enable": true
+  },
+  {
     "className": "thaumcraft.common.entities.golems.EntityGolemBase",
     "displayName": "Thaumcraft.Golem",
     "appendBabyName": false,

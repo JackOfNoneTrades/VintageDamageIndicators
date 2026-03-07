@@ -14,6 +14,7 @@ import net.minecraft.client.renderer.texture.TextureManager;
 import net.minecraft.client.settings.GameSettings;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityLivingBase;
+import net.minecraft.entity.boss.BossStatus;
 import net.minecraft.entity.boss.EntityDragon;
 import net.minecraft.util.MathHelper;
 import net.minecraft.world.World;
@@ -32,9 +33,25 @@ public final class HudEntityRenderer {
         UUID.fromString("00000000-0000-0000-0000-000000000000"),
         "PreviewDummy");
     private static final java.nio.FloatBuffer MATRIX_BUF = BufferUtils.createFloatBuffer(16);
+    private static final java.nio.FloatBuffer MODELVIEW_BACKUP = BufferUtils.createFloatBuffer(16);
+    private static final java.nio.FloatBuffer PROJECTION_BACKUP = BufferUtils.createFloatBuffer(16);
+    private static final java.nio.FloatBuffer TEXTURE_BACKUP = BufferUtils.createFloatBuffer(16);
     private static EntityOtherPlayerMP dummyPlayer;
 
     private HudEntityRenderer() {}
+
+    private static void restoreStackDepth(int matrixMode, int stackDepthConstant, int targetDepth) {
+        GL11.glMatrixMode(matrixMode);
+        int currentDepth = GL11.glGetInteger(stackDepthConstant);
+        while (currentDepth < targetDepth) {
+            GL11.glPushMatrix();
+            currentDepth++;
+        }
+        while (currentDepth > targetDepth) {
+            GL11.glPopMatrix();
+            currentDepth--;
+        }
+    }
 
     private static EntityLivingBase getOrCreateDummyPlayer(World world) {
         if (dummyPlayer == null || dummyPlayer.worldObj != world) {
@@ -65,6 +82,13 @@ public final class HudEntityRenderer {
         double oldViewerPosZ = renderManager.viewerPosZ;
         float oldPlayerViewX = renderManager.playerViewX;
         float oldPlayerViewY = RenderManager.instance.playerViewY;
+        int oldModelViewStackDepth = GL11.glGetInteger(GL11.GL_MODELVIEW_STACK_DEPTH);
+        int oldProjectionStackDepth = GL11.glGetInteger(GL11.GL_PROJECTION_STACK_DEPTH);
+        int oldTextureStackDepth = GL11.glGetInteger(GL11.GL_TEXTURE_STACK_DEPTH);
+        float oldBossHealthScale = BossStatus.healthScale;
+        int oldBossStatusBarTime = BossStatus.statusBarTime;
+        String oldBossName = BossStatus.bossName;
+        boolean oldBossHasColorModifier = BossStatus.hasColorModifier;
         float oldPrevRenderYawOffset = entity.prevRenderYawOffset;
         float oldRenderYawOffset = entity.renderYawOffset;
         float oldRotationYaw = entity.rotationYaw;
@@ -90,6 +114,13 @@ public final class HudEntityRenderer {
             minecraft.gameSettings,
             1.0F);
 
+        MODELVIEW_BACKUP.clear();
+        PROJECTION_BACKUP.clear();
+        TEXTURE_BACKUP.clear();
+        GL11.glGetFloat(GL11.GL_MODELVIEW_MATRIX, MODELVIEW_BACKUP);
+        GL11.glGetFloat(GL11.GL_PROJECTION_MATRIX, PROJECTION_BACKUP);
+        GL11.glGetFloat(GL11.GL_TEXTURE_MATRIX, TEXTURE_BACKUP);
+        GL11.glPushAttrib(GL11.GL_ALL_ATTRIB_BITS);
         OpenGlHelper.setActiveTexture(OpenGlHelper.lightmapTexUnit);
         GL11.glDisable(GL11.GL_TEXTURE_2D);
         OpenGlHelper.setActiveTexture(OpenGlHelper.defaultTexUnit);
@@ -197,7 +228,7 @@ public final class HudEntityRenderer {
                 RenderManager.instance.renderEntityWithPosYaw(entity, 0.0D, 0.0D, 0.0D, 0.0F, 1.0F);
             }
             PreviewRenderPatches.renderPostEffects(entity, noWorld, oldPrevRenderYawOffset, oldRenderYawOffset);
-        } catch (Exception e) {
+        } catch (Throwable e) {
             RENDER_FAILED_CLASSES.add(entity.getClass());
             VintageDamageIndicators.LOG.warn(
                 "Preview render failed for {}, skipping future attempts.",
@@ -206,6 +237,10 @@ public final class HudEntityRenderer {
                 e);
         } finally {
             GL11.glEnable(GL11.GL_CULL_FACE);
+            BossStatus.healthScale = oldBossHealthScale;
+            BossStatus.statusBarTime = oldBossStatusBarTime;
+            BossStatus.bossName = oldBossName;
+            BossStatus.hasColorModifier = oldBossHasColorModifier;
             PreviewRenderPatches.revertPatches(entity, patchState);
             EyesCompatHelper.endPreviewRender(renderManager, entity, eyesPreviewState);
             if (previewWorld != null && oldForceDark != shouldForceDark) {
@@ -242,6 +277,7 @@ public final class HudEntityRenderer {
         renderManager.viewerPosZ = oldViewerPosZ;
         renderManager.playerViewX = oldPlayerViewX;
         renderManager.playerViewY = oldPlayerViewY;
+        GL11.glMatrixMode(GL11.GL_MODELVIEW);
         GL11.glPopMatrix();
         GL11.glMatrixMode(GL11.GL_PROJECTION);
         GL11.glPopMatrix();
@@ -252,5 +288,21 @@ public final class HudEntityRenderer {
         GL11.glDisable(GL11.GL_TEXTURE_2D);
         OpenGlHelper.setActiveTexture(OpenGlHelper.defaultTexUnit);
         GL11.glDisable(GL11.GL_COLOR_MATERIAL);
+        restoreStackDepth(GL11.GL_MODELVIEW, GL11.GL_MODELVIEW_STACK_DEPTH, oldModelViewStackDepth);
+        restoreStackDepth(GL11.GL_PROJECTION, GL11.GL_PROJECTION_STACK_DEPTH, oldProjectionStackDepth);
+        restoreStackDepth(GL11.GL_TEXTURE, GL11.GL_TEXTURE_STACK_DEPTH, oldTextureStackDepth);
+        MODELVIEW_BACKUP.rewind();
+        PROJECTION_BACKUP.rewind();
+        TEXTURE_BACKUP.rewind();
+        GL11.glMatrixMode(GL11.GL_MODELVIEW);
+        GL11.glLoadMatrix(MODELVIEW_BACKUP);
+        GL11.glMatrixMode(GL11.GL_PROJECTION);
+        GL11.glLoadMatrix(PROJECTION_BACKUP);
+        GL11.glMatrixMode(GL11.GL_TEXTURE);
+        GL11.glLoadMatrix(TEXTURE_BACKUP);
+        GL11.glPopAttrib();
+        OpenGlHelper.setActiveTexture(OpenGlHelper.defaultTexUnit);
+        GL11.glColor4f(1.0F, 1.0F, 1.0F, 1.0F);
+        GL11.glMatrixMode(GL11.GL_MODELVIEW);
     }
 }

@@ -9,6 +9,8 @@ import org.fentanylsolutions.vintagedamageindicators.varinstances.VarInstanceCom
 
 public final class HudPreviewMath {
 
+    private static final String THAUMCRAFT_GIANT_TAINTACLE = "thaumcraft.common.entities.monster.boss.EntityTaintacleGiant";
+
     public static final int PANEL_WIDTH = 208;
     public static final int PANEL_HEIGHT = 78;
     public static final int PREVIEW_CLIP_X = 4;
@@ -132,6 +134,12 @@ public final class HudPreviewMath {
     }
 
     public static PreviewTuning getBuiltInPreviewTuning(EntityLivingBase target) {
+        if (THAUMCRAFT_GIANT_TAINTACLE.equals(
+            target.getClass()
+                .getName())) {
+            // Thaumcraft applies an extra 1.33x renderer scale on top of the entity's 6-block height.
+            return new PreviewTuning(0.75F, 0, 0);
+        }
         return PreviewTuning.DEFAULT;
     }
 
