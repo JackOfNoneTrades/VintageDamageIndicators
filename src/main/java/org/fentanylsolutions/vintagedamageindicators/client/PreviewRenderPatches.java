@@ -1,5 +1,6 @@
 package org.fentanylsolutions.vintagedamageindicators.client;
 
+import java.lang.reflect.Array;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.HashMap;
@@ -93,11 +94,16 @@ public final class PreviewRenderPatches {
     public static PatchState applyPatches(EntityLivingBase entity, boolean noWorld) {
         if (!initialized) init();
 
+        PatchState state = PatchState.NONE;
         if (thaumcraftLoaded) {
-            return ThaumcraftBridge.applyPatches(entity, noWorld);
+            state = state.merge(ThaumcraftBridge.applyPatches(entity, noWorld));
         }
 
-        return PatchState.NONE;
+        if (twilightForestLoaded) {
+            state = state.merge(TwilightForestBridge.applyPatches(entity, noWorld));
+        }
+
+        return state;
     }
 
     /**
@@ -106,8 +112,12 @@ public final class PreviewRenderPatches {
     public static void revertPatches(EntityLivingBase entity, PatchState state) {
         if (state == null || state == PatchState.NONE) return;
 
-        if (thaumcraftLoaded) {
+        if (thaumcraftLoaded && state.hasThaumcraftPatch()) {
             ThaumcraftBridge.revertPatches(entity, state);
+        }
+
+        if (twilightForestLoaded && state.hasTwilightForestPatch()) {
+            TwilightForestBridge.revertPatches(entity, state);
         }
     }
 
@@ -172,14 +182,52 @@ public final class PreviewRenderPatches {
 
     public static final class PatchState {
 
-        public static final PatchState NONE = new PatchState(-1, Float.NaN);
+        public static final PatchState NONE = new PatchState(-1, Float.NaN, null, false);
 
         private final int oldTicksExisted;
         private final float oldDisplaySize;
+        private final Object oldNagaBody;
+        private final boolean hadNagaBodyPatch;
 
-        private PatchState(int oldTicksExisted, float oldDisplaySize) {
+        private PatchState(int oldTicksExisted, float oldDisplaySize, Object oldNagaBody, boolean hadNagaBodyPatch) {
             this.oldTicksExisted = oldTicksExisted;
             this.oldDisplaySize = oldDisplaySize;
+            this.oldNagaBody = oldNagaBody;
+            this.hadNagaBodyPatch = hadNagaBodyPatch;
+        }
+
+        private static PatchState thaumcraft(int oldTicksExisted, float oldDisplaySize) {
+            if (oldTicksExisted < 0 && Float.isNaN(oldDisplaySize)) {
+                return NONE;
+            }
+            return new PatchState(oldTicksExisted, oldDisplaySize, null, false);
+        }
+
+        private static PatchState nagaBody(Object oldNagaBody) {
+            return new PatchState(-1, Float.NaN, oldNagaBody, true);
+        }
+
+        private boolean hasThaumcraftPatch() {
+            return this.oldTicksExisted >= 0 || !Float.isNaN(this.oldDisplaySize);
+        }
+
+        private boolean hasTwilightForestPatch() {
+            return this.hadNagaBodyPatch;
+        }
+
+        private PatchState merge(PatchState other) {
+            if (other == null || other == NONE) {
+                return this;
+            }
+            if (this == NONE) {
+                return other;
+            }
+
+            return new PatchState(
+                this.oldTicksExisted >= 0 ? this.oldTicksExisted : other.oldTicksExisted,
+                !Float.isNaN(this.oldDisplaySize) ? this.oldDisplaySize : other.oldDisplaySize,
+                this.hadNagaBodyPatch ? this.oldNagaBody : other.oldNagaBody,
+                this.hadNagaBodyPatch || other.hadNagaBodyPatch);
         }
     }
 
@@ -241,7 +289,7 @@ public final class PreviewRenderPatches {
             }
 
             if (oldTicks >= 0 || !Float.isNaN(oldDisplaySize)) {
-                return new PatchState(oldTicks, oldDisplaySize);
+                return PatchState.thaumcraft(oldTicks, oldDisplaySize);
             }
             return PatchState.NONE;
         }
@@ -354,6 +402,9 @@ public final class PreviewRenderPatches {
 
     private static final class TwilightForestBridge {
 
+        private static Class<?> nagaClass;
+        private static Field nagaBodyField;
+        private static Object emptyNagaBody;
         private static Class<?> hydraClass;
         private static Class<?> hydraPartClass;
         private static Class<?> hydraHeadClass;
@@ -374,6 +425,21 @@ public final class PreviewRenderPatches {
         private TwilightForestBridge() {}
 
         static void init() {
+            nagaClass = tryLoadClass("twilightforest.entity.boss.EntityTFNaga");
+            Class<?> nagaSegmentClass = tryLoadClass("twilightforest.entity.boss.EntityTFNagaSegment");
+            if (nagaClass != null && nagaSegmentClass != null) {
+                try {
+                    nagaBodyField = nagaClass.getDeclaredField("body");
+                    nagaBodyField.setAccessible(true);
+                    emptyNagaBody = Array.newInstance(nagaSegmentClass, 0);
+                } catch (ReflectiveOperationException e) {
+                    VintageDamageIndicators.LOG.warn("Failed to init Twilight Forest Naga bridge.", e);
+                    nagaClass = null;
+                    nagaBodyField = null;
+                    emptyNagaBody = null;
+                }
+            }
+
             hydraClass = tryLoadClass("twilightforest.entity.boss.EntityTFHydra");
             hydraPartClass = tryLoadClass("twilightforest.entity.boss.EntityTFHydraPart");
             hydraHeadClass = tryLoadClass("twilightforest.entity.boss.EntityTFHydraHead");
@@ -426,6 +492,28 @@ public final class PreviewRenderPatches {
                 VintageDamageIndicators.LOG.warn("Failed to init Twilight Forest Hydra bridge.", e);
                 hydraClass = null;
             }
+        }
+
+        static PatchState applyPatches(EntityLivingBase entity, boolean noWorld) {
+            if (nagaClass != null && nagaClass.isInstance(entity) && nagaBodyField != null && emptyNagaBody != null) {
+                try {
+                    Object oldBody = nagaBodyField.get(entity);
+                    if (oldBody != emptyNagaBody) {
+                        nagaBodyField.set(entity, emptyNagaBody);
+                        return PatchState.nagaBody(oldBody);
+                    }
+                } catch (IllegalAccessException ignored) {}
+            }
+
+            return PatchState.NONE;
+        }
+
+        static void revertPatches(EntityLivingBase entity, PatchState state) {
+            if (!state.hadNagaBodyPatch || nagaBodyField == null) return;
+
+            try {
+                nagaBodyField.set(entity, state.oldNagaBody);
+            } catch (IllegalAccessException ignored) {}
         }
 
         static boolean isHudSuppressed(EntityLivingBase entity) {

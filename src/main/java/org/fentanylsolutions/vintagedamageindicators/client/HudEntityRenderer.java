@@ -2,10 +2,9 @@ package org.fentanylsolutions.vintagedamageindicators.client;
 
 import java.util.HashSet;
 import java.util.Set;
-import java.util.UUID;
 
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.entity.EntityOtherPlayerMP;
+import net.minecraft.client.entity.EntityClientPlayerMP;
 import net.minecraft.client.renderer.ActiveRenderInfo;
 import net.minecraft.client.renderer.OpenGlHelper;
 import net.minecraft.client.renderer.RenderHelper;
@@ -16,6 +15,7 @@ import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityLivingBase;
 import net.minecraft.entity.boss.BossStatus;
 import net.minecraft.entity.boss.EntityDragon;
+import net.minecraft.stats.StatFileWriter;
 import net.minecraft.util.MathHelper;
 import net.minecraft.world.World;
 
@@ -24,19 +24,14 @@ import org.lwjgl.BufferUtils;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL12;
 
-import com.mojang.authlib.GameProfile;
-
 public final class HudEntityRenderer {
 
     private static final Set<Class<?>> RENDER_FAILED_CLASSES = new HashSet<>();
-    private static final GameProfile DUMMY_PROFILE = new GameProfile(
-        UUID.fromString("00000000-0000-0000-0000-000000000000"),
-        "PreviewDummy");
     private static final java.nio.FloatBuffer MATRIX_BUF = BufferUtils.createFloatBuffer(16);
     private static final java.nio.FloatBuffer MODELVIEW_BACKUP = BufferUtils.createFloatBuffer(16);
     private static final java.nio.FloatBuffer PROJECTION_BACKUP = BufferUtils.createFloatBuffer(16);
     private static final java.nio.FloatBuffer TEXTURE_BACKUP = BufferUtils.createFloatBuffer(16);
-    private static EntityOtherPlayerMP dummyPlayer;
+    private static EntityClientPlayerMP dummyPlayer;
 
     private HudEntityRenderer() {}
 
@@ -53,9 +48,14 @@ public final class HudEntityRenderer {
         }
     }
 
-    private static EntityLivingBase getOrCreateDummyPlayer(World world) {
+    private static EntityClientPlayerMP getOrCreateDummyPlayer(Minecraft minecraft, World world) {
         if (dummyPlayer == null || dummyPlayer.worldObj != world) {
-            dummyPlayer = new EntityOtherPlayerMP(world, DUMMY_PROFILE);
+            dummyPlayer = new EntityClientPlayerMP(
+                minecraft,
+                world,
+                minecraft.getSession(),
+                null,
+                new StatFileWriter());
         }
         return dummyPlayer;
     }
@@ -98,11 +98,13 @@ public final class HudEntityRenderer {
         int oldDragonRingBufferIndex = 0;
         double[][] oldDragonRingBuffer = null;
         double oldPosY = entity.posY;
+        EntityClientPlayerMP oldPlayer = minecraft.thePlayer;
         EntityLivingBase oldRenderViewEntity = minecraft.renderViewEntity;
 
         World renderWorld = minecraft.theWorld != null ? minecraft.theWorld : entity.worldObj;
-        EntityLivingBase viewLiving = minecraft.thePlayer != null ? minecraft.thePlayer
-            : getOrCreateDummyPlayer(renderWorld);
+        EntityClientPlayerMP viewLiving = minecraft.thePlayer != null ? minecraft.thePlayer
+            : getOrCreateDummyPlayer(minecraft, renderWorld);
+        minecraft.thePlayer = viewLiving;
         Entity viewEntity = minecraft.renderViewEntity != null ? minecraft.renderViewEntity : viewLiving;
         minecraft.renderViewEntity = viewLiving;
         renderManager.cacheActiveRenderInfo(
@@ -266,6 +268,7 @@ public final class HudEntityRenderer {
         ActiveRenderInfo.rotationYZ = oldRotationYZ;
         ActiveRenderInfo.rotationXY = oldRotationXY;
         ActiveRenderInfo.rotationXZ = oldRotationXZ;
+        minecraft.thePlayer = oldPlayer;
         minecraft.renderViewEntity = oldRenderViewEntity;
         renderManager.worldObj = oldWorld;
         renderManager.renderEngine = oldRenderEngine;
