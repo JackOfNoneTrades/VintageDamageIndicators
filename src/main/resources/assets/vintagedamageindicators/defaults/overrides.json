@@ -491,7 +491,7 @@
     "rollOffset": 0.0,
     "type": "UNDEAD",
     "popoffEnabled": false,
-    "enable": true
+    "enable": false
   },
   {
     "className": "drzhark.mocreatures.entity.ambient.MoCEntityAnt",
