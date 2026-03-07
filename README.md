@@ -2,7 +2,7 @@
 
 Retro Damage Indicators backport with potion status support and damage particles.
 
-![logo](images/logo.png)
+![logo](images/logo_small.png)
 
 [![hub](images/badges/github.png)](https://github.com/JackOfNoneTrades/OlderPingDisplay/releases)
 ![forge](images/badges/forge.png)
