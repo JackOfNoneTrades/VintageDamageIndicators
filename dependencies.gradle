@@ -53,8 +53,8 @@ dependencies {
     //runtimeOnlyNonPublishable(rfg.deobf("curse.maven:wild-mobs-mod-255711:2727879"))
     //runtimeOnlyNonPublishable(rfg.deobf("curse.maven:mo-creatures-legacy-957564:6220091"))
     //runtimeOnlyNonPublishable(rfg.deobf("com.Oceancraft:OceanCraft:1.7.10-1.4"))
-    runtimeOnlyNonPublishable(rfg.deobf("curse.maven:the-twilight-forest-227639:4629338"))
-    runtimeOnlyNonPublishable(rfg.deobf("curse.maven:witchery-69673:2234410"))
-    runtimeOnlyNonPublishable('com.github.GTNewHorizons:Baubles-Expanded:2.2.10-GTNH-pre:dev')
-    runtimeOnlyNonPublishable('thaumcraft:Thaumcraft:1.7.10-4.2.3.5:dev') {transitive=false}
+    //runtimeOnlyNonPublishable(rfg.deobf("curse.maven:the-twilight-forest-227639:4629338"))
+    //runtimeOnlyNonPublishable(rfg.deobf("curse.maven:witchery-69673:2234410"))
+    //runtimeOnlyNonPublishable('com.github.GTNewHorizons:Baubles-Expanded:2.2.10-GTNH-pre:dev')
+    //runtimeOnlyNonPublishable('thaumcraft:Thaumcraft:1.7.10-4.2.3.5:dev') {transitive=false}
 }
