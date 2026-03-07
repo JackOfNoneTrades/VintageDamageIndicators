@@ -5,6 +5,7 @@ Retro Damage Indicators backport with potion status support and damage particles
 ![logo](images/logo_small.png)
 
 [![hub](images/badges/github.png)](https://github.com/JackOfNoneTrades/OlderPingDisplay/releases)
+[![maven](images/badges/maven.png)](https://maven.fentanylsolutions.org/#/releases/org/fentanylsolutions/vintagedamageindicators/VintageDamageIndicators)
 ![forge](images/badges/forge.png)
 [![cord](images/badges/cord.png)](https://discord.gg/xAWCqGrguG)
 
@@ -12,7 +13,6 @@ Retro Damage Indicators backport with potion status support and damage particles
 [![modrinth](images/badges/modrinth.png)](https://modrinth.com/mod/olderpingdisplay)
 [![curse](images/badges/curse.png)](https://www.curseforge.com/minecraft/mc-mods/olderpingdisplay)
 [![mcmodcn](images/badges/mcmodcn.png)](https://www.mcmod.cn/class/24647.html)
-[![maven](images/badges/maven.png)](https://maven.fentanylsolutions.org/#/releases/org/fentanylsolutions/olderpingdisplay/OlderPingDisplay)
 -->
 
 ![golem](images/screenshots/golem.png)
