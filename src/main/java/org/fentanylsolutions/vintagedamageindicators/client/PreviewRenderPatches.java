@@ -2,14 +2,22 @@ package org.fentanylsolutions.vintagedamageindicators.client;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.WeakHashMap;
 
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.model.ModelBase;
 import net.minecraft.client.model.ModelRenderer;
+import net.minecraft.client.renderer.OpenGlHelper;
+import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityLivingBase;
+import net.minecraft.util.MathHelper;
 import net.minecraft.util.ResourceLocation;
 
 import org.fentanylsolutions.vintagedamageindicators.VintageDamageIndicators;
 import org.lwjgl.opengl.GL11;
+import org.lwjgl.opengl.GL12;
 
 import cpw.mods.fml.common.Loader;
 
@@ -21,6 +29,7 @@ import cpw.mods.fml.common.Loader;
 public final class PreviewRenderPatches {
 
     private static boolean initialized;
+    public static float hudPartialTicks = 1.0F;
 
     private PreviewRenderPatches() {}
 
@@ -101,12 +110,27 @@ public final class PreviewRenderPatches {
      * try-block,
      * after {@code renderEntityWithPosYaw}.
      */
-    public static void renderPostEffects(EntityLivingBase entity, boolean noWorld) {
+    public static void renderPostEffects(EntityLivingBase entity, boolean noWorld, float originalPrevYawOffset,
+        float originalYawOffset) {
         if (!initialized) init();
 
         if (twilightForestLoaded) {
-            TwilightForestBridge.renderHydraHeads(entity, noWorld);
+            TwilightForestBridge.renderHydraHeads(entity, noWorld, originalPrevYawOffset, originalYawOffset);
         }
+    }
+
+    /**
+     * Returns true if the HUD should not be shown for the given entity. For example, Hydra head entities are suppressed
+     * because the parent Hydra body preview already renders heads.
+     */
+    public static boolean isHudSuppressed(EntityLivingBase entity) {
+        if (!initialized) init();
+
+        if (twilightForestLoaded) {
+            return TwilightForestBridge.isHudSuppressed(entity);
+        }
+
+        return false;
     }
 
     /**
@@ -210,19 +234,27 @@ public final class PreviewRenderPatches {
 
         private static Class<?> hydraClass;
         private static Class<?> hydraPartClass;
+        private static Class<?> hydraHeadClass;
         private static Class<?> hydraNeckClass;
         private static Field hydraObjField;
         private static Field hydraHcField;
         private static Method shouldRenderHeadMethod;
+        private static Method shouldRenderNeckMethod;
+        private static Field headEntityField;
+        private static Method getNeckArrayMethod;
         private static ModelRenderer[] headParts;
         private static ModelRenderer[][] neckParts;
+        private static ModelBase hydraHeadModel;
+        private static ModelBase hydraNeckModel;
         private static ResourceLocation hydraTexture;
+        private static final WeakHashMap<EntityLivingBase, HydraPreviewState> LIVE_PREVIEW_STATES = new WeakHashMap<>();
 
         private TwilightForestBridge() {}
 
         static void init() {
             hydraClass = tryLoadClass("twilightforest.entity.boss.EntityTFHydra");
             hydraPartClass = tryLoadClass("twilightforest.entity.boss.EntityTFHydraPart");
+            hydraHeadClass = tryLoadClass("twilightforest.entity.boss.EntityTFHydraHead");
             hydraNeckClass = tryLoadClass("twilightforest.entity.boss.EntityTFHydraNeck");
             if (hydraPartClass != null) {
                 try {
@@ -237,9 +269,18 @@ public final class PreviewRenderPatches {
                 hydraHcField = hydraClass.getField("hc");
                 Class<?> headContainerClass = Class.forName("twilightforest.entity.boss.HydraHeadContainer");
                 shouldRenderHeadMethod = headContainerClass.getMethod("shouldRenderHead");
+                shouldRenderNeckMethod = headContainerClass.getMethod("shouldRenderNeck", int.class);
+                headEntityField = headContainerClass.getField("headEntity");
+                getNeckArrayMethod = headContainerClass.getMethod("getNeckArray");
 
                 Class<?> modelClass = Class.forName("twilightforest.client.model.ModelTFHydra");
                 Object model = modelClass.getConstructor()
+                    .newInstance();
+                hydraHeadModel = (ModelBase) Class.forName("twilightforest.client.model.ModelTFHydraHead")
+                    .getConstructor()
+                    .newInstance();
+                hydraNeckModel = (ModelBase) Class.forName("twilightforest.client.model.ModelTFHydraNeck")
+                    .getConstructor()
                     .newInstance();
 
                 headParts = new ModelRenderer[3];
@@ -265,6 +306,10 @@ public final class PreviewRenderPatches {
             }
         }
 
+        static boolean isHudSuppressed(EntityLivingBase entity) {
+            return hydraHeadClass != null && hydraHeadClass.isInstance(entity);
+        }
+
         static EntityLivingBase resolveHudTarget(EntityLivingBase entity) {
             if (hydraNeckClass != null && hydraNeckClass.isInstance(entity) && hydraObjField != null) {
                 try {
@@ -285,28 +330,88 @@ public final class PreviewRenderPatches {
             }
         }
 
-        static void renderHydraHeads(EntityLivingBase entity, boolean noWorld) {
-            if (hydraClass == null || !hydraClass.isInstance(entity)) return;
-            if (headParts == null) return;
-
-            // Determine head visibility: all visible for config preview, check containers in-game
-            boolean[] visible = { true, true, true };
-            if (!noWorld) {
-                try {
-                    Object[] hc = (Object[]) hydraHcField.get(entity);
-                    if (hc != null) {
-                        for (int i = 0; i < 3 && i < hc.length; i++) {
-                            if (hc[i] != null) {
-                                visible[i] = (boolean) shouldRenderHeadMethod.invoke(hc[i]);
-                            } else {
-                                visible[i] = false;
-                            }
-                        }
-                    }
-                } catch (Exception ignored) {}
+        static void renderHydraHeads(EntityLivingBase entity, boolean noWorld, float originalPrevYawOffset,
+            float originalYawOffset) {
+            if (hydraClass == null || !hydraClass.isInstance(entity) || headParts == null) return;
+            if (noWorld || hydraHcField == null
+                || shouldRenderHeadMethod == null
+                || shouldRenderNeckMethod == null
+                || headEntityField == null
+                || getNeckArrayMethod == null
+                || hydraHeadModel == null
+                || hydraNeckModel == null) {
+                renderStaticHeads(entity);
+                return;
             }
 
-            // Replicate RendererLivingEntity's transform stack to match the body render
+            if (!renderLiveHeads(entity, originalPrevYawOffset, originalYawOffset)) {
+                renderStaticHeads(entity);
+            }
+        }
+
+        private static void renderStaticHeads(EntityLivingBase entity) {
+            renderStaticHeadModel(entity);
+        }
+
+        private static boolean renderLiveHeads(EntityLivingBase hydra, float originalPrevYawOffset,
+            float originalYawOffset) {
+            try {
+                Object[] headContainers = (Object[]) hydraHcField.get(hydra);
+                if (headContainers == null) return false;
+
+                float partialTicks = MathHelper.clamp_float(hudPartialTicks, 0.0F, 1.0F);
+                float previewYawDelta = MathHelper.wrapAngleTo180_float(
+                    hydra.renderYawOffset
+                        - interpolateRotation(originalPrevYawOffset, originalYawOffset, partialTicks));
+                HydraPreviewState previewState = LIVE_PREVIEW_STATES.get(hydra);
+                if (previewState == null) {
+                    previewState = new HydraPreviewState();
+                    LIVE_PREVIEW_STATES.put(hydra, previewState);
+                }
+                previewState.beginFrame();
+
+                Minecraft.getMinecraft()
+                    .getTextureManager()
+                    .bindTexture(hydraTexture);
+
+                for (Object headContainer : headContainers) {
+                    if (headContainer == null) continue;
+
+                    Object headObj = headEntityField.get(headContainer);
+                    if (!(headObj instanceof EntityLivingBase head)) continue;
+
+                    Object neckArray = getNeckArrayMethod.invoke(headContainer);
+                    Entity[] necks = neckArray instanceof Entity[] ? (Entity[]) neckArray : null;
+
+                    if (necks != null) {
+                        for (int i = 0; i < necks.length; i++) {
+                            if (!(necks[i] instanceof EntityLivingBase neck)) continue;
+                            if (!((Boolean) shouldRenderNeckMethod.invoke(headContainer, Integer.valueOf(i)))
+                                .booleanValue()) {
+                                continue;
+                            }
+                            PartPose rawPose = samplePartPose(neck, hydra, previewYawDelta, partialTicks);
+                            PartPose smoothedPose = previewState.smooth(neck.getEntityId(), rawPose);
+                            renderHydraNeckModel(hydra, neck, smoothedPose);
+                        }
+                    }
+
+                    if (((Boolean) shouldRenderHeadMethod.invoke(headContainer)).booleanValue()) {
+                        PartPose rawPose = samplePartPose(head, hydra, previewYawDelta, partialTicks);
+                        PartPose smoothedPose = previewState.smooth(head.getEntityId(), rawPose);
+                        renderHydraHeadModel(hydra, head, smoothedPose);
+                    }
+                }
+
+                previewState.endFrame();
+                return true;
+            } catch (Exception e) {
+                VintageDamageIndicators.LOG.debug("Hydra live HUD preview failed, falling back to static.", e);
+                return false;
+            }
+        }
+
+        private static void renderStaticHeadModel(EntityLivingBase entity) {
             GL11.glPushMatrix();
             GL11.glTranslatef(0.0F, -entity.yOffset, 0.0F);
             GL11.glRotatef(180.0F - entity.renderYawOffset, 0.0F, 1.0F, 0.0F);
@@ -317,17 +422,236 @@ public final class PreviewRenderPatches {
                 .getTextureManager()
                 .bindTexture(hydraTexture);
 
-            float f5 = 0.0625F;
+            float scale = 0.0625F;
             for (int i = 0; i < 3; i++) {
-                if (visible[i]) {
-                    for (int j = 0; j < 4; j++) {
-                        neckParts[i][j].render(f5);
-                    }
-                    headParts[i].render(f5);
+                for (int j = 0; j < 4; j++) {
+                    neckParts[i][j].render(scale);
                 }
+                headParts[i].render(scale);
             }
 
             GL11.glPopMatrix();
+        }
+
+        private static PartPose samplePartPose(EntityLivingBase part, EntityLivingBase hydra, float previewYawDelta,
+            float partialTicks) {
+            double bodyX = hydra.lastTickPosX + (hydra.posX - hydra.lastTickPosX) * partialTicks;
+            double bodyY = hydra.lastTickPosY + (hydra.posY - hydra.lastTickPosY) * partialTicks;
+            double bodyZ = hydra.lastTickPosZ + (hydra.posZ - hydra.lastTickPosZ) * partialTicks;
+            double partX = part.lastTickPosX + (part.posX - part.lastTickPosX) * partialTicks;
+            double partY = part.lastTickPosY + (part.posY - part.lastTickPosY) * partialTicks;
+            double partZ = part.lastTickPosZ + (part.posZ - part.lastTickPosZ) * partialTicks;
+            double offsetX = partX - bodyX;
+            double offsetY = partY - bodyY;
+            double offsetZ = partZ - bodyZ;
+            return new PartPose(
+                rotateOffsetX(offsetX, offsetZ, previewYawDelta),
+                offsetY,
+                rotateOffsetZ(offsetX, offsetZ, previewYawDelta),
+                shiftedYaw(part, partialTicks, previewYawDelta),
+                interpolatedPitch(part, partialTicks));
+        }
+
+        private static void renderHydraHeadModel(EntityLivingBase hydra, EntityLivingBase entity, PartPose pose) {
+            PartAngleState saved = new PartAngleState(
+                entity.rotationYaw,
+                entity.prevRotationYaw,
+                entity.rotationYawHead,
+                entity.prevRotationYawHead,
+                entity.rotationPitch,
+                entity.prevRotationPitch);
+            entity.rotationYaw = pose.yaw;
+            entity.prevRotationYaw = pose.yaw;
+            entity.rotationYawHead = pose.yaw;
+            entity.prevRotationYawHead = pose.yaw;
+            entity.rotationPitch = pose.pitch;
+            entity.prevRotationPitch = pose.pitch;
+            renderHydraPartModel(hydraHeadModel, entity, hydra, pose.x, pose.y, pose.z, 0.0F, 0.0F, hudPartialTicks);
+            entity.rotationYaw = saved.rotationYaw;
+            entity.prevRotationYaw = saved.prevRotationYaw;
+            entity.rotationYawHead = saved.rotationYawHead;
+            entity.prevRotationYawHead = saved.prevRotationYawHead;
+            entity.rotationPitch = saved.rotationPitch;
+            entity.prevRotationPitch = saved.prevRotationPitch;
+        }
+
+        private static void renderHydraNeckModel(EntityLivingBase hydra, EntityLivingBase entity, PartPose pose) {
+            renderHydraPartModel(
+                hydraNeckModel,
+                entity,
+                hydra,
+                pose.x,
+                pose.y,
+                pose.z,
+                pose.yaw,
+                pose.pitch,
+                hudPartialTicks);
+        }
+
+        private static void renderHydraPartModel(ModelBase model, EntityLivingBase entity, EntityLivingBase hydra,
+            double x, double y, double z, float yaw, float pitch, float partialTicks) {
+            float scale = 0.0625F;
+
+            GL11.glPushMatrix();
+            try {
+                GL11.glTranslated(x, y, z);
+                GL11.glRotatef(180.0F, 0.0F, 1.0F, 0.0F);
+                GL11.glEnable(GL12.GL_RESCALE_NORMAL);
+                GL11.glScalef(-1.0F, -1.0F, 1.0F);
+                GL11.glTranslatef(0.0F, -24.0F * scale - 0.0078125F, 0.0F);
+                model.setLivingAnimations(entity, 0.0F, 0.0F, partialTicks);
+                model.render(entity, 0.0F, 0.0F, 0.0F, yaw, pitch, scale);
+                renderHydraHurtOverlay(model, entity, hydra, yaw, pitch, partialTicks, scale);
+            } finally {
+                GL11.glPopMatrix();
+            }
+        }
+
+        private static void renderHydraHurtOverlay(ModelBase model, EntityLivingBase entity, EntityLivingBase hydra,
+            float yaw, float pitch, float partialTicks, float scale) {
+            if (hydra.hurtTime <= 0 && hydra.deathTime <= 0) {
+                return;
+            }
+
+            float brightness = hydra.getBrightness(partialTicks);
+            OpenGlHelper.setActiveTexture(OpenGlHelper.lightmapTexUnit);
+            GL11.glDisable(GL11.GL_TEXTURE_2D);
+            OpenGlHelper.setActiveTexture(OpenGlHelper.defaultTexUnit);
+            GL11.glDisable(GL11.GL_TEXTURE_2D);
+            GL11.glDisable(GL11.GL_ALPHA_TEST);
+            GL11.glEnable(GL11.GL_BLEND);
+            GL11.glBlendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA);
+            GL11.glDepthFunc(GL11.GL_EQUAL);
+            GL11.glColor4f(brightness, 0.0F, 0.0F, 0.4F);
+            model.render(entity, 0.0F, 0.0F, 0.0F, yaw, pitch, scale);
+            GL11.glDepthFunc(GL11.GL_LEQUAL);
+            GL11.glDisable(GL11.GL_BLEND);
+            GL11.glEnable(GL11.GL_ALPHA_TEST);
+            GL11.glEnable(GL11.GL_TEXTURE_2D);
+            OpenGlHelper.setActiveTexture(OpenGlHelper.lightmapTexUnit);
+            GL11.glDisable(GL11.GL_TEXTURE_2D);
+            OpenGlHelper.setActiveTexture(OpenGlHelper.defaultTexUnit);
+            GL11.glEnable(GL11.GL_TEXTURE_2D);
+            GL11.glColor4f(1.0F, 1.0F, 1.0F, 1.0F);
+        }
+
+        private static float interpolateRotation(float previous, float current, float partialTicks) {
+            float delta = current - previous;
+            while (delta < -180.0F) {
+                delta += 360.0F;
+            }
+            while (delta >= 180.0F) {
+                delta -= 360.0F;
+            }
+            return previous + partialTicks * delta;
+        }
+
+        private static float shiftedYaw(EntityLivingBase entity, float partialTicks, float yawDelta) {
+            return interpolateRotation(entity.prevRotationYaw, entity.rotationYaw, partialTicks) + yawDelta;
+        }
+
+        private static float interpolatedPitch(EntityLivingBase entity, float partialTicks) {
+            return entity.prevRotationPitch + (entity.rotationPitch - entity.prevRotationPitch) * partialTicks;
+        }
+
+        private static double rotateOffsetX(double x, double z, float yawDegrees) {
+            double radians = Math.toRadians(yawDegrees);
+            return x * Math.cos(radians) - z * Math.sin(radians);
+        }
+
+        private static double rotateOffsetZ(double x, double z, float yawDegrees) {
+            double radians = Math.toRadians(yawDegrees);
+            return x * Math.sin(radians) + z * Math.cos(radians);
+        }
+
+        private static final class HydraPreviewState {
+
+            private final Map<Integer, PartPose> poses = new HashMap<>();
+            private final Map<Integer, Boolean> seenThisFrame = new HashMap<>();
+
+            private void beginFrame() {
+                seenThisFrame.clear();
+            }
+
+            private PartPose smooth(int entityId, PartPose rawPose) {
+                seenThisFrame.put(Integer.valueOf(entityId), Boolean.TRUE);
+                PartPose currentPose = poses.get(Integer.valueOf(entityId));
+                if (currentPose == null || currentPose.distanceSq(rawPose) > 36.0D) {
+                    PartPose seededPose = rawPose.copy();
+                    poses.put(Integer.valueOf(entityId), seededPose);
+                    return seededPose;
+                }
+
+                double distanceSq = currentPose.distanceSq(rawPose);
+                float yawDelta = Math.abs(MathHelper.wrapAngleTo180_float(rawPose.yaw - currentPose.yaw));
+                float pitchDelta = Math.abs(MathHelper.wrapAngleTo180_float(rawPose.pitch - currentPose.pitch));
+                double positionAlpha = distanceSq < 0.5D ? 0.18D : 0.35D;
+                float angleAlpha = yawDelta < 6.0F && pitchDelta < 6.0F ? 0.18F : 0.35F;
+
+                currentPose.x += (rawPose.x - currentPose.x) * positionAlpha;
+                currentPose.y += (rawPose.y - currentPose.y) * positionAlpha;
+                currentPose.z += (rawPose.z - currentPose.z) * positionAlpha;
+                currentPose.yaw = interpolateAngle(currentPose.yaw, rawPose.yaw, angleAlpha);
+                currentPose.pitch = interpolateAngle(currentPose.pitch, rawPose.pitch, angleAlpha);
+                return currentPose;
+            }
+
+            private void endFrame() {
+                poses.keySet()
+                    .removeIf(key -> !seenThisFrame.containsKey(key));
+            }
+
+            private static float interpolateAngle(float previous, float current, float alpha) {
+                return previous + MathHelper.wrapAngleTo180_float(current - previous) * alpha;
+            }
+        }
+
+        private static final class PartAngleState {
+
+            private final float rotationYaw;
+            private final float prevRotationYaw;
+            private final float rotationYawHead;
+            private final float prevRotationYawHead;
+            private final float rotationPitch;
+            private final float prevRotationPitch;
+
+            private PartAngleState(float rotationYaw, float prevRotationYaw, float rotationYawHead,
+                float prevRotationYawHead, float rotationPitch, float prevRotationPitch) {
+                this.rotationYaw = rotationYaw;
+                this.prevRotationYaw = prevRotationYaw;
+                this.rotationYawHead = rotationYawHead;
+                this.prevRotationYawHead = prevRotationYawHead;
+                this.rotationPitch = rotationPitch;
+                this.prevRotationPitch = prevRotationPitch;
+            }
+        }
+
+        private static final class PartPose {
+
+            private double x;
+            private double y;
+            private double z;
+            private float yaw;
+            private float pitch;
+
+            private PartPose(double x, double y, double z, float yaw, float pitch) {
+                this.x = x;
+                this.y = y;
+                this.z = z;
+                this.yaw = yaw;
+                this.pitch = pitch;
+            }
+
+            private double distanceSq(PartPose other) {
+                double dx = other.x - this.x;
+                double dy = other.y - this.y;
+                double dz = other.z - this.z;
+                return dx * dx + dy * dy + dz * dz;
+            }
+
+            private PartPose copy() {
+                return new PartPose(this.x, this.y, this.z, this.yaw, this.pitch);
+            }
         }
     }
 }

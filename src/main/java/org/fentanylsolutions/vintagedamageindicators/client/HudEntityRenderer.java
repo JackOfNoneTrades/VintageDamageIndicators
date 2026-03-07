@@ -65,6 +65,7 @@ public final class HudEntityRenderer {
         double oldViewerPosZ = renderManager.viewerPosZ;
         float oldPlayerViewX = renderManager.playerViewX;
         float oldPlayerViewY = RenderManager.instance.playerViewY;
+        float oldPrevRenderYawOffset = entity.prevRenderYawOffset;
         float oldRenderYawOffset = entity.renderYawOffset;
         float oldRotationYaw = entity.rotationYaw;
         float oldRotationPitch = entity.rotationPitch;
@@ -195,7 +196,7 @@ public final class HudEntityRenderer {
             if (!RENDER_FAILED_CLASSES.contains(entity.getClass())) {
                 RenderManager.instance.renderEntityWithPosYaw(entity, 0.0D, 0.0D, 0.0D, 0.0F, 1.0F);
             }
-            PreviewRenderPatches.renderPostEffects(entity, noWorld);
+            PreviewRenderPatches.renderPostEffects(entity, noWorld, oldPrevRenderYawOffset, oldRenderYawOffset);
         } catch (Exception e) {
             RENDER_FAILED_CLASSES.add(entity.getClass());
             VintageDamageIndicators.LOG.warn(

@@ -123,6 +123,7 @@ public class HudEventHandler extends Gui {
             return;
         }
 
+        PreviewRenderPatches.hudPartialTicks = event.partialTicks;
         renderHud(event.resolution, target, state.getCurrentMobType());
     }
 
@@ -222,7 +223,8 @@ public class HudEventHandler extends Gui {
             if (!(candidate instanceof EntityLivingBase) || candidate.isInvisible() || candidate.isDead) {
                 continue;
             }
-            if (!isHudEnabledFor((EntityLivingBase) candidate)) {
+            if (!isHudEnabledFor((EntityLivingBase) candidate)
+                || PreviewRenderPatches.isHudSuppressed((EntityLivingBase) candidate)) {
                 continue;
             }
 
