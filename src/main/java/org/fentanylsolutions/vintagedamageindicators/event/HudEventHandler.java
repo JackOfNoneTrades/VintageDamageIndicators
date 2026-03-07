@@ -14,6 +14,7 @@ import net.minecraft.client.gui.GuiChat;
 import net.minecraft.client.gui.ScaledResolution;
 import net.minecraft.client.renderer.OpenGlHelper;
 import net.minecraft.entity.Entity;
+import net.minecraft.entity.EntityList;
 import net.minecraft.entity.EntityLivingBase;
 import net.minecraft.potion.Potion;
 import net.minecraft.potion.PotionEffect;
@@ -360,7 +361,31 @@ public class HudEventHandler extends Gui {
         if (target == null) {
             return "";
         }
+        VarInstanceCommon.EntityOverride override = getEntityOverride(target);
+        String name = resolveBaseHudName(target, override);
+        if (override != null && override.appendBabyName && target.isChild()) {
+            return "Baby " + name;
+        }
+        return name;
+    }
+
+    private String resolveBaseHudName(EntityLivingBase target, VarInstanceCommon.EntityOverride override) {
+        if (hasCustomDisplayName(target, override)) {
+            return StatCollector.translateToLocal(override.displayName);
+        }
         return StatCollector.translateToLocal(target.getCommandSenderName());
+    }
+
+    private boolean hasCustomDisplayName(EntityLivingBase target, VarInstanceCommon.EntityOverride override) {
+        if (override == null || override.displayName == null) {
+            return false;
+        }
+        String trimmed = override.displayName.trim();
+        if (trimmed.isEmpty()) {
+            return false;
+        }
+        String registryName = EntityList.getEntityString(target);
+        return registryName == null || !trimmed.equals(registryName);
     }
 
     private void drawMobTypeIcon(Minecraft minecraft, MobTypes mobType) {

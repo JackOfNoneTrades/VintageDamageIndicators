@@ -1,7 +1,9 @@
 package org.fentanylsolutions.vintagedamageindicators;
 
+import net.minecraftforge.client.ClientCommandHandler;
 import net.minecraftforge.common.MinecraftForge;
 
+import org.fentanylsolutions.vintagedamageindicators.command.OpenOverrideEditorCommand;
 import org.fentanylsolutions.vintagedamageindicators.event.HudEventHandler;
 import org.fentanylsolutions.vintagedamageindicators.event.ParticleEventHandler;
 import org.fentanylsolutions.vintagedamageindicators.network.VDINetwork;
@@ -35,5 +37,11 @@ public class ClientProxy extends CommonProxy {
         FMLCommonHandler.instance()
             .bus()
             .register(hudEventHandler);
+
+        OpenOverrideEditorCommand openOverrideEditorCommand = new OpenOverrideEditorCommand();
+        ClientCommandHandler.instance.registerCommand(openOverrideEditorCommand);
+        FMLCommonHandler.instance()
+            .bus()
+            .register(openOverrideEditorCommand);
     }
 }

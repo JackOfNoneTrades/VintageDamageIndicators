@@ -1,6 +1,9 @@
 package org.fentanylsolutions.vintagedamageindicators.gui;
 
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import net.minecraft.client.Minecraft;
@@ -10,6 +13,7 @@ import net.minecraftforge.common.config.ConfigElement;
 
 import org.fentanylsolutions.vintagedamageindicators.Config;
 import org.fentanylsolutions.vintagedamageindicators.VintageDamageIndicators;
+import org.fentanylsolutions.vintagedamageindicators.varinstances.VarInstanceCommon;
 
 import com.google.common.collect.Lists;
 
@@ -22,6 +26,8 @@ import cpw.mods.fml.common.Loader;
 
 @SuppressWarnings("unused")
 public class GuiFactory implements IModGuiFactory {
+
+    private static PendingEntityOverrideState pendingEntityOverrideState;
 
     @Override
     public void initialize(Minecraft minecraftInstance) {}
@@ -57,6 +63,7 @@ public class GuiFactory implements IModGuiFactory {
                 false,
                 false,
                 "Vintage Damage Indicators");
+            clearPendingEntityOverrideState();
         }
 
         @Override
@@ -85,6 +92,7 @@ public class GuiFactory implements IModGuiFactory {
             if (b.id == 2000) {
                 /* Syncing config */
                 VintageDamageIndicators.debug("Saving config");
+                applyPendingEntityOverrideState();
                 Config.save();
                 Config.loadConfig(VintageDamageIndicators.confFile);
             }
@@ -141,6 +149,16 @@ public class GuiFactory implements IModGuiFactory {
         }
     }
 
+    public static boolean openEntityOverrideScreen(GuiScreen parentScreen) {
+        GuiScreen customScreen = tryCreateEntityOverrideScreen(parentScreen);
+        if (customScreen == null) {
+            return false;
+        }
+        Minecraft.getMinecraft()
+            .displayGuiScreen(customScreen);
+        return true;
+    }
+
     private static GuiScreen tryCreateEntityOverrideScreen(GuiScreen parentScreen) {
         if (!Loader.isModLoaded("modularui2")) {
             return null;
@@ -151,10 +169,110 @@ public class GuiFactory implements IModGuiFactory {
             return (GuiScreen) factoryClass.getMethod("create", GuiScreen.class)
                 .invoke(null, parentScreen);
         } catch (ReflectiveOperationException | LinkageError e) {
-            VintageDamageIndicators.LOG.warn(
-                "Failed to open the ModularUI2 entity override editor. Falling back to the default config screen.",
-                e);
+            VintageDamageIndicators.LOG.warn("Failed to create the ModularUI2 entity override editor.", e);
             return null;
+        }
+    }
+
+    public static PendingEntityOverrideState copyPendingEntityOverrideState() {
+        return pendingEntityOverrideState == null ? null : pendingEntityOverrideState.copy();
+    }
+
+    public static void stageEntityOverrideState(Map<String, VarInstanceCommon.EntityOverride> overridesByClassName,
+        List<String> preservedEntries, float previewYaw, float previewPitch) {
+        pendingEntityOverrideState = new PendingEntityOverrideState(
+            overridesByClassName,
+            preservedEntries,
+            previewYaw,
+            previewPitch);
+    }
+
+    public static void clearPendingEntityOverrideState() {
+        pendingEntityOverrideState = null;
+    }
+
+    public static void applyPendingEntityOverrideState() {
+        if (pendingEntityOverrideState == null) {
+            return;
+        }
+        applyEntityOverrideState(pendingEntityOverrideState);
+        pendingEntityOverrideState = null;
+    }
+
+    public static void saveEntityOverrideState(Map<String, VarInstanceCommon.EntityOverride> overridesByClassName,
+        List<String> preservedEntries, float previewYaw, float previewPitch) {
+        applyEntityOverrideState(
+            new PendingEntityOverrideState(overridesByClassName, preservedEntries, previewYaw, previewPitch));
+        clearPendingEntityOverrideState();
+        Config.save();
+    }
+
+    private static void applyEntityOverrideState(PendingEntityOverrideState state) {
+        Config.setHudPreviewAngles(state.previewYaw, state.previewPitch);
+
+        if (VintageDamageIndicators.varInstanceCommon != null) {
+            VintageDamageIndicators.varInstanceCommon
+                .replaceEntityOverrides(state.overridesByClassName, state.preservedEntries);
+            return;
+        }
+
+        List<VarInstanceCommon.EntityOverride> serialized = new ArrayList<>();
+        for (VarInstanceCommon.EntityOverride override : state.overridesByClassName.values()) {
+            if (override != null) {
+                serialized.add(override.copy());
+            }
+        }
+        for (String preserved : state.preservedEntries) {
+            if (preserved == null || preserved.trim()
+                .isEmpty()) {
+                continue;
+            }
+            VarInstanceCommon.EntityOverride parsed = VarInstanceCommon.EntityOverride.deserialize(preserved);
+            if (parsed.className == null || parsed.className.trim()
+                .isEmpty()) {
+                continue;
+            }
+            serialized.add(parsed);
+        }
+        Config.setEntityOverrides(serialized);
+    }
+
+    private static LinkedHashMap<String, VarInstanceCommon.EntityOverride> copyOverrides(
+        Map<String, VarInstanceCommon.EntityOverride> overridesByClassName) {
+        LinkedHashMap<String, VarInstanceCommon.EntityOverride> copy = new LinkedHashMap<>();
+        if (overridesByClassName == null) {
+            return copy;
+        }
+        for (Map.Entry<String, VarInstanceCommon.EntityOverride> entry : overridesByClassName.entrySet()) {
+            VarInstanceCommon.EntityOverride override = entry.getValue();
+            if (override != null) {
+                copy.put(entry.getKey(), override.copy());
+            }
+        }
+        return copy;
+    }
+
+    public static final class PendingEntityOverrideState {
+
+        public final LinkedHashMap<String, VarInstanceCommon.EntityOverride> overridesByClassName;
+        public final ArrayList<String> preservedEntries;
+        public final float previewYaw;
+        public final float previewPitch;
+
+        private PendingEntityOverrideState(Map<String, VarInstanceCommon.EntityOverride> overridesByClassName,
+            List<String> preservedEntries, float previewYaw, float previewPitch) {
+            this.overridesByClassName = copyOverrides(overridesByClassName);
+            this.preservedEntries = preservedEntries == null ? new ArrayList<>() : new ArrayList<>(preservedEntries);
+            this.previewYaw = previewYaw;
+            this.previewPitch = previewPitch;
+        }
+
+        private PendingEntityOverrideState copy() {
+            return new PendingEntityOverrideState(
+                this.overridesByClassName,
+                this.preservedEntries,
+                this.previewYaw,
+                this.previewPitch);
         }
     }
 }

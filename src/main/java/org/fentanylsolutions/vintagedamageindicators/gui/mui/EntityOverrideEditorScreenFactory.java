@@ -33,6 +33,7 @@ import org.fentanylsolutions.vintagedamageindicators.client.HudEntityRenderer;
 import org.fentanylsolutions.vintagedamageindicators.client.HudPreviewMath;
 import org.fentanylsolutions.vintagedamageindicators.client.HudPreviewWorld;
 import org.fentanylsolutions.vintagedamageindicators.client.PreviewEntityFactory;
+import org.fentanylsolutions.vintagedamageindicators.gui.GuiFactory;
 import org.fentanylsolutions.vintagedamageindicators.varinstances.VarInstanceCommon;
 import org.lwjgl.opengl.GL11;
 
@@ -77,6 +78,16 @@ public final class EntityOverrideEditorScreenFactory {
     private static final int PREVIEW_SECTION_HEIGHT = 78;
     private static final int FIXED_EDITOR_HEIGHT = 20;
     private static final int LEFT_FOOTER_HEIGHT = 40;
+    private static final int SAVE_BUTTON_WIDTH = 32;
+    private static final int CANCEL_BUTTON_WIDTH = 44;
+    private static final int HEADER_BUTTON_HEIGHT = 14;
+    private static final int HEADER_BUTTON_TOP = 2;
+    private static final int HEADER_BUTTON_RIGHT = 4;
+    private static final int HEADER_BUTTON_SPACING = 4;
+    private static final int TITLE_RIGHT_WITH_ACTIONS = HEADER_BUTTON_RIGHT + SAVE_BUTTON_WIDTH
+        + HEADER_BUTTON_SPACING
+        + CANCEL_BUTTON_WIDTH
+        + 8;
     private static final int LABEL_WIDTH = 104;
     private static final int FIELD_WIDTH = 100;
     private static final int LEFT_LABEL_WIDTH = 40;
@@ -91,7 +102,8 @@ public final class EntityOverrideEditorScreenFactory {
     private EntityOverrideEditorScreenFactory() {}
 
     public static GuiScreen create(GuiScreen parentScreen) {
-        EditorState state = new EditorState();
+        EditorState state = new EditorState(parentScreen instanceof GuiFactory.ConfigGui);
+        boolean drawDirtBackground = parentScreen != null;
         int panelHeight = resolvePanelHeight(parentScreen);
         ModularScreen screen = new ModularScreen(
             VintageDamageIndicators.MODID,
@@ -100,7 +112,7 @@ public final class EntityOverrideEditorScreenFactory {
             @Override
             public void drawScreen() {
                 GuiScreen guiScreen = getScreenWrapper() != null ? getScreenWrapper().getGuiScreen() : null;
-                if (guiScreen != null) {
+                if (drawDirtBackground && guiScreen != null) {
                     GL11.glDisable(GL11.GL_DEPTH_TEST);
                     guiScreen.drawBackground(0);
                     GL11.glEnable(GL11.GL_DEPTH_TEST);
@@ -115,7 +127,9 @@ public final class EntityOverrideEditorScreenFactory {
 
             @Override
             public void drawWorldBackground(int tint) {
-                this.drawBackground(tint);
+                if (drawDirtBackground) {
+                    this.drawBackground(tint);
+                }
             }
         };
     }
@@ -141,15 +155,16 @@ public final class EntityOverrideEditorScreenFactory {
 
         ModularPanel panel = ModularPanel.defaultPanel("entity_override_editor", PREFERRED_PANEL_WIDTH, panelHeight)
             .padding(6)
-            .onCloseAction(state::save);
+            .onCloseAction(state::onClose);
 
-        panel.child(ButtonWidget.panelCloseButton());
+        panel.child(buildSaveButton(panel, state));
+        panel.child(buildCancelButton(panel, state));
         panel.child(
             IKey.dynamic(state::getWindowTitle)
                 .asWidget()
                 .top(6)
                 .left(18)
-                .right(18)
+                .right(TITLE_RIGHT_WITH_ACTIONS)
                 .height(12)
                 .scale(0.75F)
                 .textAlign(Alignment.Center));
@@ -190,6 +205,46 @@ public final class EntityOverrideEditorScreenFactory {
         panel.child(formPane);
 
         return panel;
+    }
+
+    private static ButtonWidget<?> buildSaveButton(ModularPanel panel, EditorState state) {
+        ButtonWidget<?> button = new ButtonWidget<>().widgetTheme(IThemeApi.BUTTON)
+            .top(HEADER_BUTTON_TOP)
+            .right(HEADER_BUTTON_RIGHT)
+            .width(SAVE_BUTTON_WIDTH)
+            .height(HEADER_BUTTON_HEIGHT)
+            .overlay(
+                IKey.str("Save")
+                    .scale(0.8F));
+        button.onMousePressed(mouseButton -> {
+            if (mouseButton == 0 || mouseButton == 1) {
+                state.save();
+                panel.closeIfOpen();
+                return true;
+            }
+            return false;
+        });
+        return button;
+    }
+
+    private static ButtonWidget<?> buildCancelButton(ModularPanel panel, EditorState state) {
+        ButtonWidget<?> button = new ButtonWidget<>().widgetTheme(IThemeApi.BUTTON)
+            .top(HEADER_BUTTON_TOP)
+            .right(HEADER_BUTTON_RIGHT + SAVE_BUTTON_WIDTH + HEADER_BUTTON_SPACING)
+            .width(CANCEL_BUTTON_WIDTH)
+            .height(HEADER_BUTTON_HEIGHT)
+            .overlay(
+                IKey.str("Cancel")
+                    .scale(0.8F));
+        button.onMousePressed(mouseButton -> {
+            if (mouseButton == 0 || mouseButton == 1) {
+                state.cancel();
+                panel.closeIfOpen();
+                return true;
+            }
+            return false;
+        });
+        return button;
     }
 
     private static Flow buildLeftFooter(EditorState state) {
@@ -714,6 +769,7 @@ public final class EntityOverrideEditorScreenFactory {
     private static final class EditorState {
 
         private final List<EntityOption> options;
+        private final boolean configGuiContext;
         private final Map<String, VarInstanceCommon.EntityOverride> overridesByClassName = new LinkedHashMap<>();
         private final List<String> preservedEntries = new ArrayList<>();
         private int selectedIndex;
@@ -723,8 +779,11 @@ public final class EntityOverrideEditorScreenFactory {
         private EntityLivingBase previewEntity;
         private String previewEntityClassName;
         private boolean previewEntityCreationAttempted;
+        private boolean saved;
+        private boolean cancelled;
 
-        private EditorState() {
+        private EditorState(boolean configGuiContext) {
+            this.configGuiContext = configGuiContext;
             this.options = buildOptions();
             loadExistingOverrides();
         }
@@ -759,6 +818,31 @@ public final class EntityOverrideEditorScreenFactory {
             Set<String> editableClassNames = new java.util.HashSet<>();
             for (EntityOption option : this.options) {
                 editableClassNames.add(option.className);
+            }
+
+            if (this.configGuiContext) {
+                GuiFactory.PendingEntityOverrideState pending = GuiFactory.copyPendingEntityOverrideState();
+                if (pending != null) {
+                    this.previewYaw = pending.previewYaw;
+                    this.previewPitch = pending.previewPitch;
+                    for (Map.Entry<String, VarInstanceCommon.EntityOverride> entry : pending.overridesByClassName
+                        .entrySet()) {
+                        if (editableClassNames.contains(entry.getKey())) {
+                            this.overridesByClassName.put(
+                                entry.getKey(),
+                                entry.getValue()
+                                    .copy());
+                        } else {
+                            addPreservedEntry(
+                                entry.getValue()
+                                    .serialize());
+                        }
+                    }
+                    for (String preserved : pending.preservedEntries) {
+                        addPreservedEntry(preserved);
+                    }
+                    return;
+                }
             }
 
             if (VintageDamageIndicators.varInstanceCommon != null) {
@@ -797,37 +881,33 @@ public final class EntityOverrideEditorScreenFactory {
         }
 
         private void save() {
-            flushChanges();
-            Config.save();
+            GuiFactory.saveEntityOverrideState(
+                this.overridesByClassName,
+                this.preservedEntries,
+                this.previewYaw,
+                this.previewPitch);
+            this.saved = true;
+            this.cancelled = false;
         }
 
-        private void flushChanges() {
-            Config.setHudPreviewAngles(this.previewYaw, this.previewPitch);
+        private void cancel() {
+            GuiFactory.clearPendingEntityOverrideState();
+            this.cancelled = true;
+            this.saved = false;
+        }
 
-            if (VintageDamageIndicators.varInstanceCommon != null) {
-                VintageDamageIndicators.varInstanceCommon
-                    .replaceEntityOverrides(this.overridesByClassName, this.preservedEntries);
+        private void onClose() {
+            if (this.saved || this.cancelled) {
+                return;
+            }
+            if (this.configGuiContext) {
+                GuiFactory.stageEntityOverrideState(
+                    this.overridesByClassName,
+                    this.preservedEntries,
+                    this.previewYaw,
+                    this.previewPitch);
             } else {
-                List<VarInstanceCommon.EntityOverride> serialized = new ArrayList<>();
-                for (EntityOption option : this.options) {
-                    VarInstanceCommon.EntityOverride override = this.overridesByClassName.get(option.className);
-                    if (override != null) {
-                        serialized.add(override.copy());
-                    }
-                }
-                for (String preserved : this.preservedEntries) {
-                    if (preserved == null || preserved.trim()
-                        .isEmpty()) {
-                        continue;
-                    }
-                    VarInstanceCommon.EntityOverride parsed = VarInstanceCommon.EntityOverride.deserialize(preserved);
-                    if (parsed.className == null || parsed.className.trim()
-                        .isEmpty()) {
-                        continue;
-                    }
-                    serialized.add(parsed);
-                }
-                Config.setEntityOverrides(serialized);
+                GuiFactory.clearPendingEntityOverrideState();
             }
         }
 
@@ -957,7 +1037,6 @@ public final class EntityOverrideEditorScreenFactory {
 
         private void resetSelectedOverride() {
             this.overridesByClassName.remove(getSelectedOption().className);
-            flushChanges();
         }
 
         private String getPreviewName(EntityLivingBase entity) {
@@ -1102,24 +1181,21 @@ public final class EntityOverrideEditorScreenFactory {
         }
 
         private IntValue.Dynamic enabledValue() {
-            return new IntValue.Dynamic(() -> getSelectedOverrideOrDefault().enable ? 1 : 0, value -> {
-                getOrCreateSelectedOverride().enable = value != 0;
-                flushChanges();
-            });
+            return new IntValue.Dynamic(
+                () -> getSelectedOverrideOrDefault().enable ? 1 : 0,
+                value -> { getOrCreateSelectedOverride().enable = value != 0; });
         }
 
         private IntValue.Dynamic appendBabyNameValue() {
-            return new IntValue.Dynamic(() -> getSelectedOverrideOrDefault().appendBabyName ? 1 : 0, value -> {
-                getOrCreateSelectedOverride().appendBabyName = value != 0;
-                flushChanges();
-            });
+            return new IntValue.Dynamic(
+                () -> getSelectedOverrideOrDefault().appendBabyName ? 1 : 0,
+                value -> { getOrCreateSelectedOverride().appendBabyName = value != 0; });
         }
 
         private IntValue.Dynamic popoffEnabledValue() {
-            return new IntValue.Dynamic(() -> getSelectedOverrideOrDefault().popoffEnabled ? 1 : 0, value -> {
-                getOrCreateSelectedOverride().popoffEnabled = value != 0;
-                flushChanges();
-            });
+            return new IntValue.Dynamic(
+                () -> getSelectedOverrideOrDefault().popoffEnabled ? 1 : 0,
+                value -> { getOrCreateSelectedOverride().popoffEnabled = value != 0; });
         }
 
         private IValue<MobTypes> typeValue() {
@@ -1129,10 +1205,7 @@ public final class EntityOverrideEditorScreenFactory {
                     return override.type;
                 }
                 return getDetectedTypeForSelectedOption();
-            }, value -> {
-                getOrCreateSelectedOverride().type = value == null ? MobTypes.UNKNOWN : value;
-                flushChanges();
-            });
+            }, value -> { getOrCreateSelectedOverride().type = value == null ? MobTypes.UNKNOWN : value; });
         }
 
         private MobTypes getDetectedTypeForSelectedOption() {
@@ -1144,10 +1217,7 @@ public final class EntityOverrideEditorScreenFactory {
             return new StringValue.Dynamic(
                 () -> getSelectedOverrideOrDefault().displayName == null ? ""
                     : getSelectedOverrideOrDefault().displayName,
-                value -> {
-                    getOrCreateSelectedOverride().displayName = value;
-                    flushChanges();
-                });
+                value -> { getOrCreateSelectedOverride().displayName = value; });
         }
 
         private StringValue.Dynamic scaleValue() {
@@ -1225,10 +1295,9 @@ public final class EntityOverrideEditorScreenFactory {
         }
 
         private StringValue.Dynamic floatValue(FloatGetter getter, FloatSetter setter) {
-            return new StringValue.Dynamic(() -> formatFloat(getter.get()), value -> {
-                setter.set(parseFloat(value));
-                flushChanges();
-            });
+            return new StringValue.Dynamic(
+                () -> formatFloat(getter.get()),
+                value -> { setter.set(parseFloat(value)); });
         }
     }
 
