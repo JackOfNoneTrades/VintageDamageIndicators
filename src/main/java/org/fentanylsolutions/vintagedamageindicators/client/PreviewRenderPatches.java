@@ -9,7 +9,9 @@ import java.util.WeakHashMap;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.model.ModelBase;
 import net.minecraft.client.model.ModelRenderer;
+import net.minecraft.client.renderer.ActiveRenderInfo;
 import net.minecraft.client.renderer.OpenGlHelper;
+import net.minecraft.client.renderer.Tessellator;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityLivingBase;
 import net.minecraft.util.MathHelper;
@@ -40,6 +42,7 @@ public final class PreviewRenderPatches {
     private static Class<?> taintSporeClass;
     private static Field taintSporeDisplaySizeField;
     private static Class<?> taintacleClass;
+    private static Class<?> taintSwarmClass;
     private static Class<?> mindSpiderClass;
 
     // Twilight Forest
@@ -55,6 +58,7 @@ public final class PreviewRenderPatches {
             cultistPortalClass = tryLoadClass("thaumcraft.common.entities.monster.boss.EntityCultistPortal");
             taintSporeClass = tryLoadClass("thaumcraft.common.entities.monster.EntityTaintSpore");
             taintacleClass = tryLoadClass("thaumcraft.common.entities.monster.EntityTaintacle");
+            taintSwarmClass = tryLoadClass("thaumcraft.common.entities.monster.EntityTaintSwarm");
             mindSpiderClass = tryLoadClass("thaumcraft.common.entities.monster.EntityMindSpider");
             if (taintSporeClass != null) {
                 try {
@@ -115,6 +119,10 @@ public final class PreviewRenderPatches {
     public static void renderPostEffects(EntityLivingBase entity, boolean noWorld, float originalPrevYawOffset,
         float originalYawOffset) {
         if (!initialized) init();
+
+        if (thaumcraftLoaded) {
+            ThaumcraftBridge.renderPostEffects(entity);
+        }
 
         if (twilightForestLoaded) {
             TwilightForestBridge.renderHydraHeads(entity, noWorld, originalPrevYawOffset, originalYawOffset);
@@ -177,6 +185,10 @@ public final class PreviewRenderPatches {
 
     private static final class ThaumcraftBridge {
 
+        private static final ResourceLocation THAUMCRAFT_PARTICLE_TEXTURE = new ResourceLocation(
+            "thaumcraft",
+            "textures/misc/particles.png");
+
         /** Minimum ticksExisted for the CultistPortal spawn animation to complete. */
         private static final int CULTIST_PORTAL_SPAWN_TICKS = 50;
 
@@ -184,6 +196,12 @@ public final class PreviewRenderPatches {
         private static final int MIND_SPIDER_FADE_TICKS = 10;
 
         private ThaumcraftBridge() {}
+
+        static void renderPostEffects(EntityLivingBase entity) {
+            if (taintSwarmClass != null && taintSwarmClass.isInstance(entity)) {
+                renderTaintSwarm(entity);
+            }
+        }
 
         static PatchState applyPatches(EntityLivingBase entity, boolean noWorld) {
             if (!noWorld) return PatchState.NONE;
@@ -237,6 +255,100 @@ public final class PreviewRenderPatches {
                     taintSporeDisplaySizeField.setFloat(entity, state.oldDisplaySize);
                 } catch (IllegalAccessException ignored) {}
             }
+        }
+
+        private static void renderTaintSwarm(EntityLivingBase entity) {
+            Minecraft.getMinecraft()
+                .getTextureManager()
+                .bindTexture(THAUMCRAFT_PARTICLE_TEXTURE);
+
+            GL11.glPushAttrib(GL11.GL_ENABLE_BIT | GL11.GL_COLOR_BUFFER_BIT | GL11.GL_DEPTH_BUFFER_BIT);
+            GL11.glDisable(GL11.GL_LIGHTING);
+            GL11.glDisable(GL11.GL_CULL_FACE);
+            GL11.glEnable(GL11.GL_BLEND);
+            GL11.glBlendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA);
+            GL11.glDepthMask(false);
+            GL11.glAlphaFunc(GL11.GL_GREATER, 0.003921569F);
+
+            Tessellator tessellator = Tessellator.instance;
+            tessellator.startDrawingQuads();
+
+            float particleAge = entity.ticksExisted + hudPartialTicks;
+            float rotationX = ActiveRenderInfo.rotationX;
+            float rotationXZ = ActiveRenderInfo.rotationXZ;
+            float rotationZ = ActiveRenderInfo.rotationZ;
+            float rotationYZ = ActiveRenderInfo.rotationYZ;
+            float rotationXY = ActiveRenderInfo.rotationXY;
+
+            float centerY = entity.height * 0.55F;
+            for (int i = 0; i < 30; i++) {
+                renderTaintSwarmParticle(
+                    tessellator,
+                    particleAge,
+                    i,
+                    centerY,
+                    rotationX,
+                    rotationXZ,
+                    rotationZ,
+                    rotationYZ,
+                    rotationXY);
+            }
+
+            tessellator.draw();
+            GL11.glPopAttrib();
+            GL11.glColor4f(1.0F, 1.0F, 1.0F, 1.0F);
+        }
+
+        private static void renderTaintSwarmParticle(Tessellator tessellator, float particleAge, int index,
+            float centerY, float rotationX, float rotationXZ, float rotationZ, float rotationYZ, float rotationXY) {
+            float seed = index * 0.73F;
+            float azimuth = particleAge * (0.13F + 0.01F * (index % 4)) + seed * 4.0F;
+            float elevation = particleAge * (0.17F + 0.008F * (index % 5)) + seed * 2.7F;
+            float radius = 0.4F + 0.1F * MathHelper.sin((particleAge * 0.09F) + seed * 2.0F);
+            float horizontalRadius = radius * MathHelper.cos(elevation);
+            float x = MathHelper.cos(azimuth) * horizontalRadius;
+            float z = MathHelper.sin(azimuth) * horizontalRadius;
+            float y = centerY + MathHelper.sin(elevation) * radius * 0.85F;
+            x += 0.09F * MathHelper.sin((particleAge * 0.31F) + seed * 6.0F);
+            y += 0.07F * MathHelper.cos((particleAge * 0.23F) + seed * 5.0F);
+            z += 0.09F * MathHelper.cos((particleAge * 0.27F) + seed * 7.0F);
+            float bob = 1.0F + 0.2F * MathHelper.sin((particleAge + index) / 3.0F);
+            float scale = (0.07F + 0.015F * (index % 4)) * bob;
+            int part = 7 + ((MathHelper.floor_float(particleAge) + index) % 8);
+            float u0 = part / 16.0F;
+            float u1 = u0 + 0.0624375F;
+            float v0 = 0.25F;
+            float v1 = v0 + 0.0624375F;
+            float red = 0.8F + 0.03F * (index % 4);
+            float green = 0.08F * (index % 5);
+            float blue = 0.85F + 0.02F * (index % 3);
+
+            tessellator.setBrightness(240);
+            tessellator.setColorRGBA_F(red, green, blue, 0.78F);
+            tessellator.addVertexWithUV(
+                (x - rotationX * scale) - rotationXY * scale,
+                y - rotationXZ * scale,
+                (z - rotationZ * scale) - rotationYZ * scale,
+                u1,
+                v1);
+            tessellator.addVertexWithUV(
+                (x - rotationX * scale) + rotationXY * scale,
+                y + rotationXZ * scale,
+                (z - rotationZ * scale) + rotationYZ * scale,
+                u1,
+                v0);
+            tessellator.addVertexWithUV(
+                x + rotationX * scale + rotationXY * scale,
+                y + rotationXZ * scale,
+                z + rotationZ * scale + rotationYZ * scale,
+                u0,
+                v0);
+            tessellator.addVertexWithUV(
+                (x + rotationX * scale) - rotationXY * scale,
+                y - rotationXZ * scale,
+                (z + rotationZ * scale) - rotationYZ * scale,
+                u0,
+                v1);
         }
     }
 
