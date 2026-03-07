@@ -256,7 +256,13 @@ public class HudEventHandler extends Gui {
     }
 
     private boolean isHudEnabledFor(EntityLivingBase entity) {
-        if (entity == null || VintageDamageIndicators.varInstanceCommon == null) {
+        if (entity == null) {
+            return true;
+        }
+        if (PreviewRenderPatches.isHudSuppressed(entity)) {
+            return false;
+        }
+        if (VintageDamageIndicators.varInstanceCommon == null) {
             return true;
         }
         VarInstanceCommon.EntityOverride override = VintageDamageIndicators.varInstanceCommon.getEntityOverride(
