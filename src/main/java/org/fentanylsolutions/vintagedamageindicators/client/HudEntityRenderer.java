@@ -1,5 +1,6 @@
 package org.fentanylsolutions.vintagedamageindicators.client;
 
+import java.lang.reflect.Field;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -15,6 +16,7 @@ import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityLivingBase;
 import net.minecraft.entity.boss.BossStatus;
 import net.minecraft.entity.boss.EntityDragon;
+import net.minecraft.entity.item.EntityEnderCrystal;
 import net.minecraft.stats.StatFileWriter;
 import net.minecraft.util.MathHelper;
 import net.minecraft.world.World;
@@ -97,6 +99,9 @@ public final class HudEntityRenderer {
         float oldRotationYawHead = entity.rotationYawHead;
         int oldDragonRingBufferIndex = 0;
         double[][] oldDragonRingBuffer = null;
+        EntityEnderCrystal oldDragonHealingCrystal = null;
+        HEEBossDragonBridge.PreviewState oldHEEDragonState = HEEBossDragonBridge.PreviewState.NONE;
+        SpecialMobsBridge.PreviewState oldSpecialMobState = SpecialMobsBridge.PreviewState.NONE;
         double oldPosY = entity.posY;
         EntityClientPlayerMP oldPlayer = minecraft.thePlayer;
         EntityLivingBase oldRenderViewEntity = minecraft.renderViewEntity;
@@ -168,7 +173,7 @@ public final class HudEntityRenderer {
         float previewRotationYaw = (float) Math.atan(yawInput / 40.0F) * 40.0F;
         float previewRotationPitch = -((float) Math.atan(pitchInput / 40.0F)) * 20.0F;
 
-        if (entity instanceof EntityDragon) {
+        if (entity instanceof EntityDragon || HEEBossDragonBridge.isDragon(entity)) {
             previewBodyYaw += 180.0F;
             previewRotationYaw += 180.0F;
         }
@@ -191,7 +196,11 @@ public final class HudEntityRenderer {
                 dragon.ringBuffer[i][1] = entity.posY;
                 dragon.ringBuffer[i][2] = 0.0D;
             }
+            oldDragonHealingCrystal = dragon.healingEnderCrystal;
+            dragon.healingEnderCrystal = null;
         }
+        oldHEEDragonState = HEEBossDragonBridge.beginPreview(entity, previewRotationYaw);
+        oldSpecialMobState = SpecialMobsBridge.beginPreview(entity);
 
         HudPreviewWorld previewWorld = entity.worldObj instanceof HudPreviewWorld ? (HudPreviewWorld) entity.worldObj
             : null;
@@ -243,6 +252,7 @@ public final class HudEntityRenderer {
             BossStatus.statusBarTime = oldBossStatusBarTime;
             BossStatus.bossName = oldBossName;
             BossStatus.hasColorModifier = oldBossHasColorModifier;
+            SpecialMobsBridge.endPreview(entity, oldSpecialMobState);
             PreviewRenderPatches.revertPatches(entity, patchState);
             EyesCompatHelper.endPreviewRender(renderManager, entity, eyesPreviewState);
             if (previewWorld != null && oldForceDark != shouldForceDark) {
@@ -261,7 +271,9 @@ public final class HudEntityRenderer {
             for (int i = 0; i < dragon.ringBuffer.length; i++) {
                 System.arraycopy(oldDragonRingBuffer[i], 0, dragon.ringBuffer[i], 0, dragon.ringBuffer[i].length);
             }
+            dragon.healingEnderCrystal = oldDragonHealingCrystal;
         }
+        HEEBossDragonBridge.endPreview(entity, oldHEEDragonState);
 
         ActiveRenderInfo.rotationX = oldRotationX;
         ActiveRenderInfo.rotationZ = oldRotationZ;
@@ -307,5 +319,213 @@ public final class HudEntityRenderer {
         OpenGlHelper.setActiveTexture(OpenGlHelper.defaultTexUnit);
         GL11.glColor4f(1.0F, 1.0F, 1.0F, 1.0F);
         GL11.glMatrixMode(GL11.GL_MODELVIEW);
+    }
+
+    private static final class HEEBossDragonBridge {
+
+        private static final String ENTITY_BOSS_DRAGON_CLASS = "chylex.hee.entity.boss.EntityBossDragon";
+        private static final Class<?> dragonClass = findDragonClass();
+        private static final Field movementBufferField = findField("movementBuffer");
+        private static final Field movementBufferIndexField = findField("movementBufferIndex");
+        private static final Field healingEnderCrystalField = findField("healingEnderCrystal");
+
+        private HEEBossDragonBridge() {}
+
+        static boolean isDragon(EntityLivingBase entity) {
+            return dragonClass != null && entity != null && dragonClass.isInstance(entity);
+        }
+
+        static PreviewState beginPreview(EntityLivingBase entity, float previewRotationYaw) {
+            if (!isDragon(entity)) {
+                return PreviewState.NONE;
+            }
+
+            try {
+                int oldIndex = -1;
+                double[][] backup = new double[0][];
+
+                if (movementBufferField != null && movementBufferIndexField != null) {
+                    double[][] movementBuffer = (double[][]) movementBufferField.get(entity);
+                    if (movementBuffer != null && movementBuffer.length > 0) {
+                        oldIndex = movementBufferIndexField.getInt(entity);
+                        backup = new double[movementBuffer.length][];
+                        for (int i = 0; i < movementBuffer.length; i++) {
+                            double[] entry = movementBuffer[i];
+                            if (entry == null) {
+                                continue;
+                            }
+                            backup[i] = entry.clone();
+                            if (entry.length > 0) {
+                                entry[0] = previewRotationYaw;
+                            }
+                            if (entry.length > 1) {
+                                entry[1] = entity.posY;
+                            }
+                        }
+                        movementBufferIndexField.setInt(entity, 0);
+                    }
+                }
+
+                EntityEnderCrystal oldHealingCrystal = null;
+                if (healingEnderCrystalField != null) {
+                    oldHealingCrystal = (EntityEnderCrystal) healingEnderCrystalField.get(entity);
+                    healingEnderCrystalField.set(entity, null);
+                }
+                return new PreviewState(oldIndex, backup, oldHealingCrystal);
+            } catch (ReflectiveOperationException | ClassCastException e) {
+                VintageDamageIndicators.LOG.warn("Failed to patch Hardcore Ender Expansion dragon preview state.", e);
+                return PreviewState.NONE;
+            }
+        }
+
+        static void endPreview(EntityLivingBase entity, PreviewState state) {
+            if (!isDragon(entity) || state == null || state == PreviewState.NONE) {
+                return;
+            }
+
+            try {
+                if (healingEnderCrystalField != null) {
+                    healingEnderCrystalField.set(entity, state.oldHealingCrystal);
+                }
+
+                if (movementBufferField != null && movementBufferIndexField != null && state.oldIndex >= 0) {
+                    double[][] movementBuffer = (double[][]) movementBufferField.get(entity);
+                    if (movementBuffer == null) {
+                        return;
+                    }
+                    movementBufferIndexField.setInt(entity, state.oldIndex);
+                    for (int i = 0; i < movementBuffer.length && i < state.oldBuffer.length; i++) {
+                        double[] backup = state.oldBuffer[i];
+                        if (backup == null || movementBuffer[i] == null) {
+                            continue;
+                        }
+                        System.arraycopy(
+                            backup,
+                            0,
+                            movementBuffer[i],
+                            0,
+                            Math.min(backup.length, movementBuffer[i].length));
+                    }
+                }
+            } catch (ReflectiveOperationException | ClassCastException e) {
+                VintageDamageIndicators.LOG.warn("Failed to restore Hardcore Ender Expansion dragon preview state.", e);
+            }
+        }
+
+        private static Class<?> findDragonClass() {
+            try {
+                return Class.forName(ENTITY_BOSS_DRAGON_CLASS);
+            } catch (ClassNotFoundException e) {
+                return null;
+            }
+        }
+
+        private static Field findField(String fieldName) {
+            if (dragonClass == null) {
+                return null;
+            }
+            try {
+                Field field = dragonClass.getDeclaredField(fieldName);
+                field.setAccessible(true);
+                return field;
+            } catch (ReflectiveOperationException e) {
+                return null;
+            }
+        }
+
+        private static final class PreviewState {
+
+            private static final PreviewState NONE = new PreviewState(-1, new double[0][], null);
+
+            private final int oldIndex;
+            private final double[][] oldBuffer;
+            private final EntityEnderCrystal oldHealingCrystal;
+
+            private PreviewState(int oldIndex, double[][] oldBuffer, EntityEnderCrystal oldHealingCrystal) {
+                this.oldIndex = oldIndex;
+                this.oldBuffer = oldBuffer;
+                this.oldHealingCrystal = oldHealingCrystal;
+            }
+        }
+    }
+
+    private static final class SpecialMobsBridge {
+
+        private static final String SPECIAL_MOB_CLASS = "toast.specialMobs.entity.ISpecialMob";
+        private static final String SPECIAL_MOB_DATA_CLASS = "toast.specialMobs.entity.SpecialMobData";
+        private static final float HUD_RENDER_SCALE = 1.0F;
+        private static final Class<?> specialMobClass = findClass(SPECIAL_MOB_CLASS);
+        private static final int scaleWatcherId = findScaleWatcherId();
+
+        private SpecialMobsBridge() {}
+
+        static PreviewState beginPreview(EntityLivingBase entity) {
+            if (!isSpecialMob(entity) || scaleWatcherId < 0) {
+                return PreviewState.NONE;
+            }
+
+            try {
+                float oldScale = entity.getDataWatcher()
+                    .getWatchableObjectFloat(scaleWatcherId);
+                if (oldScale != HUD_RENDER_SCALE) {
+                    entity.getDataWatcher()
+                        .updateObject(scaleWatcherId, Float.valueOf(HUD_RENDER_SCALE));
+                }
+                return new PreviewState(oldScale);
+            } catch (RuntimeException e) {
+                VintageDamageIndicators.LOG.warn("Failed to patch Special Mobs render scale for HUD preview.", e);
+                return PreviewState.NONE;
+            }
+        }
+
+        static void endPreview(EntityLivingBase entity, PreviewState state) {
+            if (!isSpecialMob(entity) || scaleWatcherId < 0 || state == null || state == PreviewState.NONE) {
+                return;
+            }
+
+            try {
+                entity.getDataWatcher()
+                    .updateObject(scaleWatcherId, Float.valueOf(state.oldScale));
+            } catch (RuntimeException e) {
+                VintageDamageIndicators.LOG.warn("Failed to restore Special Mobs render scale after HUD preview.", e);
+            }
+        }
+
+        private static boolean isSpecialMob(EntityLivingBase entity) {
+            return specialMobClass != null && entity != null && specialMobClass.isInstance(entity);
+        }
+
+        private static int findScaleWatcherId() {
+            Class<?> specialMobDataClass = findClass(SPECIAL_MOB_DATA_CLASS);
+            if (specialMobDataClass == null) {
+                return -1;
+            }
+            try {
+                Field field = specialMobDataClass.getDeclaredField("SCALE");
+                field.setAccessible(true);
+                return field.getByte(null);
+            } catch (ReflectiveOperationException e) {
+                return -1;
+            }
+        }
+
+        private static Class<?> findClass(String className) {
+            try {
+                return Class.forName(className);
+            } catch (ClassNotFoundException e) {
+                return null;
+            }
+        }
+
+        private static final class PreviewState {
+
+            private static final PreviewState NONE = new PreviewState(HUD_RENDER_SCALE);
+
+            private final float oldScale;
+
+            private PreviewState(float oldScale) {
+                this.oldScale = oldScale;
+            }
+        }
     }
 }
