@@ -464,6 +464,14 @@ public class Config {
         }
     }
 
+    public static void setDisableBossBar(boolean disabled) {
+        disableBossBar = disabled;
+        if (config != null) {
+            config.get(Categories.hudIndicator, "disableBossBar", disableBossBar)
+                .set(disableBossBar);
+        }
+    }
+
     public static void save() {
         if (config != null) {
             config.save();
