@@ -50,7 +50,7 @@ dependencies {
 
     // Content mods
     compileOnly("org.fentanylsolutions.eyesintheshadows:EyesInTheShadows:test4")
-    implementation(rfg.deobf("curse.maven:special-mobs-59968:7581890"))
+    compileOnly(rfg.deobf("curse.maven:special-mobs-59968:7581890"))
     //runtimeOnlyNonPublishable(rfg.deobf("curse.maven:hardcore-ender-expansion-228015:2316923"))
     //runtimeOnlyNonPublishable(rfg.deobf("curse.maven:wild-mobs-mod-255711:2727879"))
     //runtimeOnlyNonPublishable(rfg.deobf("curse.maven:mo-creatures-legacy-957564:6220091"))
