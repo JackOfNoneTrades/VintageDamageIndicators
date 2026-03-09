@@ -16,6 +16,7 @@ import net.minecraft.client.renderer.OpenGlHelper;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityList;
 import net.minecraft.entity.EntityLivingBase;
+import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.potion.Potion;
 import net.minecraft.potion.PotionEffect;
 import net.minecraft.util.AxisAlignedBB;
@@ -119,7 +120,7 @@ public class HudEventHandler extends Gui {
 
         HudIndicatorState state = VintageDamageIndicators.varInstanceClient.hudIndicatorState;
         EntityLivingBase target = state.getTargetEntity();
-        if (target == null || target.isDead || !isHudEnabledFor(target)) {
+        if (target == null || target.isDead || !isHudEnabledFor(target) || isHiddenInvisiblePlayer(target)) {
             state.clearTarget();
             return;
         }
@@ -177,7 +178,7 @@ public class HudEventHandler extends Gui {
     private void updateTargetState(float partialTicks) {
         HudIndicatorState state = VintageDamageIndicators.varInstanceClient.hudIndicatorState;
         EntityLivingBase currentTarget = state.getTargetEntity();
-        if (currentTarget != null && !isHudEnabledFor(currentTarget)) {
+        if (currentTarget != null && (!isHudEnabledFor(currentTarget) || isHiddenInvisiblePlayer(currentTarget))) {
             state.clearTarget();
         }
         EntityLivingBase target = findTarget(Config.maxDistance, partialTicks);
@@ -222,6 +223,9 @@ public class HudEventHandler extends Gui {
 
         for (Entity candidate : candidates) {
             if (!(candidate instanceof EntityLivingBase) || candidate.isInvisible() || candidate.isDead) {
+                continue;
+            }
+            if (isHiddenInvisiblePlayer((EntityLivingBase) candidate)) {
                 continue;
             }
             if (!isHudEnabledFor((EntityLivingBase) candidate)
@@ -270,6 +274,16 @@ public class HudEventHandler extends Gui {
             entity.getClass()
                 .getName());
         return override == null || override.enable;
+    }
+
+    private boolean isHiddenInvisiblePlayer(EntityLivingBase entity) {
+        if (!(entity instanceof EntityPlayer)) {
+            return false;
+        }
+
+        Minecraft minecraft = Minecraft.getMinecraft();
+        EntityPlayer viewer = minecraft.thePlayer;
+        return viewer != null && entity.isInvisibleToPlayer(viewer);
     }
 
     private void clearTargetState() {

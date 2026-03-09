@@ -235,6 +235,7 @@ public final class HudEntityRenderer {
         PreviewRenderPatches.PatchState patchState = PreviewRenderPatches.applyPatches(entity, noWorld);
         GL11.glDisable(GL11.GL_CULL_FACE);
         try {
+            renderManager.livingPlayer = entity;
             if (!RENDER_FAILED_CLASSES.contains(entity.getClass())) {
                 RenderManager.instance.renderEntityWithPosYaw(entity, 0.0D, 0.0D, 0.0D, 0.0F, 1.0F);
             }
