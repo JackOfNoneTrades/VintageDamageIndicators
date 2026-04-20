@@ -295,6 +295,7 @@ public class HudEventHandler extends Gui {
     private void renderHud(ScaledResolution resolution, EntityLivingBase target, MobTypes mobType) {
         Minecraft minecraft = Minecraft.getMinecraft();
         PotionStripData potionStrip = getPotionStripData(target, minecraft.fontRenderer);
+        boolean depthTestEnabled = GL11.glIsEnabled(GL11.GL_DEPTH_TEST);
         float scale = Config.hudIndicatorSize;
         int hudWidth = Math.max(PANEL_WIDTH, POTION_PANEL_X + potionStrip.stripWidth);
         int x = Config.hudIndicatorAlignLeft ? Config.hudIndicatorPositionX
@@ -326,6 +327,11 @@ public class HudEventHandler extends Gui {
         drawPotionStrip(minecraft, minecraft.fontRenderer, potionStrip);
 
         GL11.glPopMatrix();
+        if (depthTestEnabled) {
+            GL11.glEnable(GL11.GL_DEPTH_TEST);
+        } else {
+            GL11.glDisable(GL11.GL_DEPTH_TEST);
+        }
     }
 
     private void drawBackground(Minecraft minecraft) {
