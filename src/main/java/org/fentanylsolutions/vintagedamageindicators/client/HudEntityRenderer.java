@@ -94,7 +94,9 @@ public final class HudEntityRenderer {
         float oldPrevRenderYawOffset = entity.prevRenderYawOffset;
         float oldRenderYawOffset = entity.renderYawOffset;
         float oldRotationYaw = entity.rotationYaw;
+        float oldPrevRotationYaw = entity.prevRotationYaw;
         float oldRotationPitch = entity.rotationPitch;
+        float oldPrevRotationPitch = entity.prevRotationPitch;
         float oldPrevRotationYawHead = entity.prevRotationYawHead;
         float oldRotationYawHead = entity.rotationYawHead;
         int oldDragonRingBufferIndex = 0;
@@ -178,8 +180,11 @@ public final class HudEntityRenderer {
             previewRotationYaw += 180.0F;
         }
 
+        entity.prevRenderYawOffset = previewBodyYaw;
         entity.renderYawOffset = previewBodyYaw;
+        entity.prevRotationYaw = previewRotationYaw;
         entity.rotationYaw = previewRotationYaw;
+        entity.prevRotationPitch = previewRotationPitch;
         entity.rotationPitch = previewRotationPitch;
         entity.rotationYawHead = previewRotationYaw;
         entity.prevRotationYawHead = previewRotationYaw;
@@ -204,6 +209,10 @@ public final class HudEntityRenderer {
 
         HudPreviewWorld previewWorld = entity.worldObj instanceof HudPreviewWorld ? (HudPreviewWorld) entity.worldObj
             : null;
+        World oldEntityWorld = entity.worldObj;
+        if (previewWorld == null) {
+            entity.worldObj = HudPreviewWorld.INSTANCE;
+        }
         boolean oldForceDark = previewWorld != null && previewWorld.isForceDark();
         boolean isEyesEntity = EyesCompatHelper.isEyesEntity(entity);
         boolean shouldForceDark = previewWorld != null && isEyesEntity;
@@ -260,8 +269,12 @@ public final class HudEntityRenderer {
                 previewWorld.setForceDark(oldForceDark);
             }
         }
+        entity.worldObj = oldEntityWorld;
+        entity.prevRenderYawOffset = oldPrevRenderYawOffset;
         entity.renderYawOffset = oldRenderYawOffset;
+        entity.prevRotationYaw = oldPrevRotationYaw;
         entity.rotationYaw = oldRotationYaw;
+        entity.prevRotationPitch = oldPrevRotationPitch;
         entity.rotationPitch = oldRotationPitch;
         entity.prevRotationYawHead = oldPrevRotationYawHead;
         entity.rotationYawHead = oldRotationYawHead;
